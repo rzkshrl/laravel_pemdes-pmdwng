@@ -60,6 +60,12 @@ return [
             'report' => false,
         ],
 
+        'nas' => [
+        'driver' => 'local',
+        'root'   => env('NAS_BASE_PATH', '/volume1/homes/adminpemdes/PemdesData'),
+        'throw'  => false,
+    ],
+
     ],
 
     /*
