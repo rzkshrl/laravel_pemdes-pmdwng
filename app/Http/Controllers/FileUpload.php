@@ -58,12 +58,12 @@ class FileUpload extends Controller
     $absolute = FilePathHelper::fullPath($relative);
 
     // buat public link
-    // $shareUrl = $fs->createShareLink($absolute);
+    $shareUrl = $fs->createShareLink($absolute);
 
     File::create([
       'name' => $name,
       'file_path' => $relative, // relative path saja
-      'share_url' => null,
+      'share_url' => $shareUrl,
     ]);
 
     return back()->with('success', 'File berhasil diupload dan link publik dibuat.');
