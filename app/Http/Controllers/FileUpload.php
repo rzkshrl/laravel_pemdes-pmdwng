@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\File;
 use App\Helpers\FilePathHelper;
 use App\Services\SynologyFileStation;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log; 
 
 class FileUpload extends Controller
 {
@@ -44,28 +44,44 @@ class FileUpload extends Controller
 
   public function store(Request $request, SynologyFileStation $fs)
   {
-    $request->validate([
-      'file' => 'required|mimes:jpg,png,pdf,doc,docx,xls,xlsx,txt|max:20480',
-    ]);
-    $f = $request->file('file');
-    $folder = trim(env('NAS_RELATIVE_FOLDER', 'uploads'), '/');
-    $name = time() . '_' . $f->getClientOriginalName();
-
-    // simpan ke NAS via disk 'nas'
-    Storage::disk('nas')->putFileAs($folder, $f, $name);
-
-    $relative = $folder . '/' . $name;
-    $absolute = FilePathHelper::fullPath($relative);
-
-    // buat public link
-    // $shareUrl = $fs->createShareLink($absolute);
-
-    File::create([
-      'name' => $name,
-      'file_path' => $relative, // relative path saja
-      'share_url' => null,
+        $request->validate([
+        'file' => 'required|mimes:jpg,jpeg,png,pdf,docx,xlsx|max:20480'
     ]);
 
-    return back()->with('success', 'File berhasil diupload dan link publik dibuat.');
+    // Lokasi NAS di luar project Laravel
+    $outsidePath = '/volume1/DriveShare/uploads';
+    if (!file_exists($outsidePath)) {
+        mkdir($outsidePath, 0775, true);
+    }
+
+    $file = $request->file('file');
+    $fileName = time() . '_' . $file->getClientOriginalName();
+
+    // Simpan ke NAS
+    $file->move($outsidePath, $fileName);
+
+    // Path relatif yg disimpan ke DB
+    $relativePath = 'DriveShare/uploads/' . $fileName;
+
+    // Default share URL null
+    $shareUrl = null;
+
+    try {
+        // Coba generate public link via helper
+        $shareUrl = SynologyFileStation::createPublicLink($relativePath);
+    } catch (\Exception $e) {
+        // Kalau gagal jangan bikin error 500, cukup log
+        Log::error("Gagal generate share link: " . $e->getMessage());
+        $shareUrl = null;
+    }
+
+    // Simpan ke DB
+    \App\Models\File::create([
+        'name' => $fileName,
+        'file_path' => $relativePath,
+        'share_url' => $shareUrl,
+    ]);
+
+    return redirect()->back()->with('success', 'File berhasil diupload!');
   }
 }
