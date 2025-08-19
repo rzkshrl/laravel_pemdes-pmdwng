@@ -49,7 +49,7 @@ class FileUpload extends Controller
     ]);
 
     // Lokasi NAS di luar project Laravel
-    $outsidePath = '/volume1/DriveShare/uploads';
+    $outsidePath = env('NAS_BASE_PATH') . '/' . env('NAS_RELATIVE_FOLDER');
     if (!file_exists($outsidePath)) {
         mkdir($outsidePath, 0775, true);
     }
@@ -61,7 +61,7 @@ class FileUpload extends Controller
     $file->move($outsidePath, $fileName);
 
     // Path relatif yg disimpan ke DB
-    $relativePath = 'DriveShare/uploads/' . $fileName;
+    $relativePath = env('NAS_RELATIVE_FOLDER') . $fileName;
 
     // Default share URL null
     $shareUrl = null;
