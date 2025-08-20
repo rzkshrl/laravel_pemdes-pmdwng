@@ -7,6 +7,7 @@ use App\Models\File;
 use App\Helpers\FilePathHelper;
 use App\Services\SynologyFileStation;
 use Illuminate\Support\Facades\Log; 
+use Illuminate\Support\Facades\Storage;
 
 class FileUpload extends Controller
 {
@@ -37,60 +38,45 @@ class FileUpload extends Controller
   }
 
   public function index()
-  {
-    $files = File::latest()->get();
-    return view('file-upload-nas', compact('files'));
-  }
+    {
+        $files = File::all();
+        return view('file-upload', compact('files'));
+    }
 
-  public function store(Request $request, SynologyFileStation $fs)
-  {
+    public function store(Request $request)
+    {
         $request->validate([
-        'file' => 'required|mimes:jpg,jpeg,png,pdf,docx,xlsx|max:20480'
-    ]);
+            'file' => 'required|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120', // 5MB
+        ]);
 
-    // Lokasi NAS di luar project Laravel
-    $outsidePath = env('NAS_BASE_PATH') . '/' . env('NAS_RELATIVE_FOLDER');
-    if (!file_exists($outsidePath)) {
-        mkdir($outsidePath, 0775, true);
+        try {
+            $uploadedFile = $request->file('file');
+
+            // Simpan ke NAS (disk 'nas')
+            $filePath = Storage::disk('nas')->putFile('', $uploadedFile);
+
+            // Simpan ke DB (relative path saja)
+            $file = File::create([
+                'name'      => $uploadedFile->getClientOriginalName(),
+                'file_path' => $filePath,
+            ]);
+
+            return back()->with('success', 'File berhasil diupload!')
+                         ->with('file', $file);
+        } catch (\Exception $e) {
+            return back()->withErrors(['msg' => 'Upload gagal: ' . $e->getMessage()]);
+        }
     }
 
-    $file = $request->file('file');
-    $fileName = time() . '_' . $file->getClientOriginalName();
+    public function download($id)
+    {
+        $file = File::findOrFail($id);
 
-    // Simpan ke NAS
-    $file->move($outsidePath, $fileName);
+        if (Storage::disk('nas')->exists($file->file_path)) {
+            $fullPath = Storage::disk('nas')->path($file->file_path);
+            return response()->download($fullPath, $file->name);
+        }
 
-    // Path relatif yg disimpan ke DB
-    $relativePath = env('NAS_RELATIVE_FOLDER') . $fileName;
-
-    // Default share URL null
-    $shareUrl = null;
-
-    try {
-        // Coba generate public link via helper
-        $shareUrl = SynologyFileStation::createPublicLink($relativePath);
-    } catch (\Exception $e) {
-        // Kalau gagal jangan bikin error 500, cukup log
-        Log::error("Gagal generate share link: " . $e->getMessage());
-        $shareUrl = null;
+        return back()->withErrors(['msg' => 'File tidak ditemukan.']);
     }
-
-    // // Simpan ke DB
-    // File::create([
-    //     'name' => $fileName,
-    //     'file_path' => $relativePath,
-    //     'share_url' => $shareUrl,
-    // ]);
-
-    $filePath = $request->file('file')->store('', 'nas');
-
-    $file = File::create([
-        'name' => $request->file('file')->getClientOriginalName(),
-        'file_path' => $filePath,
-    ]);
-
-    // tambahkan shareUrl sebagai accessor di model
-
-    return redirect()->back()->with('success', 'File berhasil diupload!');
-  }
 }

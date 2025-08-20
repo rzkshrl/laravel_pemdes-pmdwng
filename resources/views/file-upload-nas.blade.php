@@ -2,38 +2,22 @@
 <html>
 
 <head>
-    <meta charset="utf-8">
-    <title>Upload ke NAS</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css">
+    <title>Laravel File Upload</title>
     <style>
-    body {
-        font-family: Arial;
-        max-width: 900px;
-        margin: 32px auto
+    .container {
+        max-width: 500px;
+
     }
 
-    .success {
-        color: #0a7a0a
-    }
-
-    .error {
-        color: #b00020
-    }
-
-    table {
-        border-collapse: collapse;
-        width: 100%;
-        margin-top: 20px
-    }
-
-    th,
-    td {
-        border: 1px solid #e5e5e5;
-        padding: 8px;
-        text-align: left
-    }
-
-    th {
-        background: #f7f7f7
+    dl,
+    ol,
+    ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
     }
     </style>
 </head>
@@ -82,11 +66,15 @@
     <p>Belum ada file yang diupload.</p>
     @endif
 
-    @foreach($files as $file)
-    <p>{{ $file->name }} -
-        <a href="{{ $file->share_url }}" target="_blank">Download</a>
-    </p>
-    @endforeach
+    <h2>Daftar File</h2>
+    <ul>
+        @foreach($files as $file)
+        <li>
+            {{ $file->name }}
+            | <a href="{{ route('file.download', $file->id) }}">Download</a>
+        </li>
+        @endforeach
+    </ul>
 </body>
 
 </html>
