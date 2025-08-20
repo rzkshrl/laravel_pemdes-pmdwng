@@ -62,8 +62,8 @@ return [
 
         'nas' => [
         'driver' => 'local',
-        'root'   => env('UPLOAD_PATH', storage_path('app/public/uploads')),
-        'url'    => env('NAS_BASE_URL', 'https://pemdesnas.synology.me/uploads'),],
+        'root'   => env('UPLOAD_PATH', storage_path('/volume1/homes/adminpemdes/PemdesData/uploads')),
+        ],
 
     ],
 
