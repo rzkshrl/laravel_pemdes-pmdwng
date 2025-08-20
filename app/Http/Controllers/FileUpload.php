@@ -40,7 +40,7 @@ class FileUpload extends Controller
   public function index()
     {
         $files = File::all();
-        return view('file-upload', compact('files'));
+        return view('file-upload-nas', compact('files'));
     }
 
     public function store(Request $request)
