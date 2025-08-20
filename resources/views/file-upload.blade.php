@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -43,4 +43,4 @@
             </div>
             <button type="submit" name="submit" class="btn btn-primary btn-block mt-4">Upload</button>
 </body>
-</html>
+</html> -->
