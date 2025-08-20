@@ -13,7 +13,7 @@ class FileUpload extends Controller
 {
   public function createForm()
   {
-    return view('file-upload');
+    return view('file-upload-nas');
   }
 
   public function fileUpload(Request $req)
