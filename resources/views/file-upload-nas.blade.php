@@ -81,6 +81,12 @@
     @else
     <p>Belum ada file yang diupload.</p>
     @endif
+
+    @foreach($files as $file)
+    <p>{{ $file->name }} -
+        <a href="{{ $file->share_url }}" target="_blank">Download</a>
+    </p>
+    @endforeach
 </body>
 
 </html>

@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Helpers\FileHelper;
 
 class File extends Model
 {
-    use HasFactory;
+    protected $fillable = ['name', 'file_path'];
 
-    protected $fillable = ['name', 'file_path', 'share_url'];
+    protected $appends = ['share_url'];
+
+    public function getShareUrlAttribute()
+    {
+        return FileHelper::shareUrl($this->file_path);
+    }
 }

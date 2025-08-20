@@ -75,12 +75,21 @@ class FileUpload extends Controller
         $shareUrl = null;
     }
 
-    // Simpan ke DB
-    \App\Models\File::create([
-        'name' => $fileName,
-        'file_path' => $relativePath,
-        'share_url' => $shareUrl,
+    // // Simpan ke DB
+    // File::create([
+    //     'name' => $fileName,
+    //     'file_path' => $relativePath,
+    //     'share_url' => $shareUrl,
+    // ]);
+
+    $filePath = $request->file('file')->store('', 'nas');
+
+    $file = File::create([
+        'name' => $request->file('file')->getClientOriginalName(),
+        'file_path' => $filePath,
     ]);
+
+    // tambahkan shareUrl sebagai accessor di model
 
     return redirect()->back()->with('success', 'File berhasil diupload!');
   }
