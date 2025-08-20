@@ -62,7 +62,7 @@ return [
 
         'nas' => [
         'driver' => 'local',
-        'root'   => env('NAS_BASE_PATH', '/volume1/homes/adminpemdes/PemdesData'),
+        'root'   => env('NAS_BASE_PATH', '/volume1/homes/adminpemdes/PemdesData/uploads'),
         'throw'  => false,
     ],
 
