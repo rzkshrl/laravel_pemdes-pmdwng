@@ -3,7 +3,7 @@ import shutil
 import pandas as pd
 
 # Path NAS
-FORM_RESPONSES_XLSX = "/volume1/homes/adminpemdes/SynologyGDriveUpload/ResponForm.xlsx"
+FORM_RESPONSES_XLSX = "/volume1/homes/adminpemdes/FormResponeGDriveSync/Respon Form Desa.xlsx"
 SRC_DIR = "/volume1/homes/adminpemdes/SynologyGDriveUpload/"
 DEST_BASE = "/volume1/homes/adminpemdes/PemdesData/Data Desa/"
 
