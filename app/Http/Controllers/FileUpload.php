@@ -53,7 +53,9 @@ class FileUpload extends Controller
             $uploadedFile = $request->file('file');
 
             // Simpan ke NAS (disk 'nas')
-            $filePath = Storage::disk('nas')->putFile('', $uploadedFile);
+            $filename = time() . '_' . $request->file('file')->getClientOriginalName();
+            $filePath = $request->file('file')->storeAs('', $filename, 'nas');
+            // $filePath = Storage::disk('nas')->putFile('', $uploadedFile);
 
             // Simpan ke DB (relative path saja)
             $file = File::create([
