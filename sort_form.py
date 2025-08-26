@@ -7,14 +7,23 @@ FORM_RESPONSES_XLSX = "/volume1/homes/adminpemdes/FormResponseGDriveSync/Respon 
 SRC_DIR = "/volume1/homes/adminpemdes/SynologyGDriveUpload/"
 DEST_BASE = "/volume1/homes/adminpemdes/PemdesData/Data Desa/"
 
-KOLOM_DESA = "Nama Desa"
-KOLOM_NAMA_FILE = "Nama File Asli"
-
 df = pd.read_excel(FORM_RESPONSES_XLSX)
+
+df.columns = df.columns.str.strip()   # hapus spasi berlebih
+
+# Debug: tampilkan kolom
+print("Kolom terbaca:", df.columns.tolist())
+
+KOLOM_DESA = "Nama Desa"
+KOLOM_LINK = "Upload Dokumen"
+KOLOM_NAMA_FILE = "Nama File Asli"
 
 for _, row in df.iterrows():
     desa = str(row[KOLOM_DESA]).strip()
+    link = str(row[KOLOM_LINK]).strip()
     fname = str(row[KOLOM_NAMA_FILE]).strip()
+
+    print(f"[INFO] Desa={desa}, File={fname}, Link={link}")
 
     desa_folder = os.path.join(DEST_BASE, desa)
     os.makedirs(desa_folder, exist_ok=True)
