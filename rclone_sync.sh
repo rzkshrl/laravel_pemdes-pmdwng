@@ -1,13 +1,8 @@
 #!/bin/bash
-LOGFILE="/var/log/rclone_sync.log"
-TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
+DATE=$(date '+%Y-%m-%d %H:%M:%S')
 
-echo "[$TIMESTAMP] Mulai sinkron..." >> $LOGFILE
+echo "[$DATE] Start sync..." >> /volume1/scripts/rclone.log
 
-rclone sync gdrive:/Form Upload Dokumen Desa (File responses)/Upload Dokumen (File responses) /volume1/homes/adminpemdes/SynologyGDriveUpload \
-    --progress \
-    --create-empty-src-dirs \
-    --log-file=$LOGFILE \
-    --log-level INFO
+rclone sync "gdrive:/Form Upload Dokumen Desa (File responses)/Upload Dokumen (File responses)" "/volume1/homes/adminpemdes/SynologyGDriveUpload" --log-file="/volume1/scripts/rclone.log" -v
 
-echo "[$TIMESTAMP] Selesai sinkron." >> $LOGFILE
+echo "[$DATE] Finished sync." >> /volume1/scripts/rclone.log
