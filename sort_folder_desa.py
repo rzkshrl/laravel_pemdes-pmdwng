@@ -4,6 +4,7 @@ import subprocess
 
 # Load Excel daftar desa
 df = pd.read_excel("/volume1/scripts/daftar_desa.xlsx")
+print("Columns in Excel file:", df.columns.tolist())  # Debug: print column names
 
 BASE_PATH = "/volume1/PemdesData/Data Desa"
 
