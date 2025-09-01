@@ -23,20 +23,23 @@ for _, row in df.iterrows():
 
     # Buat user per desa (jika belum ada)
     try:
-        subprocess.run(
-            ["synouser", "--add", username, "password123", username, username, "/sbin/nologin", "0"],
-            capture_output=True, text=True, check=True
-        )
+        os.system(f"synouser --add {username} password123 {username} 0 '' 0")
+        # subprocess.run(
+        #     ["synouser", "--add", username, "password123", username, username, "/sbin/nologin", "0"],
+        #     capture_output=True, text=True, check=True
+        # )
         print(f"✅ User dibuat: {username}")
     except Exception as e:
         print(f"⚠️ User {username} gagal dibuat/sudah ada. {e}")
 
     # Atur permission hanya untuk user desa tsb
     try:
-        subprocess.run(
-            ["synoacltool", "-add", folder_path, f"user:{username}:allow:rwxpdDaARWcCo"],
-            capture_output=True, text=True, check=True
-        )
+        os.system(f"synoacltool -add {folder_path} user:{username}:allow:rwxpdDaARWcCo")
+        
+        # subprocess.run(
+        #     ["synoacltool", "-add", folder_path, f"user:{username}:allow:rwxpdDaARWcCo"],
+        #     capture_output=True, text=True, check=True
+        # )
         print(f"✅ Permission diberikan ke {username} untuk {folder_path}")
     except Exception as e:
         print(f"⚠️ Gagal set permission {username}. {e}")
