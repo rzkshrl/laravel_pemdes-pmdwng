@@ -30,7 +30,7 @@ for _, row in df.iterrows():
 
     # Buat folder jika belum ada
     kec_folder = os.path.join(DEST_BASE, kecamatan)
-    desa_folder = os.path.join(DEST_BASE/kec_folder, desa)
+    desa_folder = os.path.join(kec_folder, desa)
 
     src_file = os.path.join(SRC_DIR, fname)
     dest_file = os.path.join(desa_folder, fname)         
