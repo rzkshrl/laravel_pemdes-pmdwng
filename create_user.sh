@@ -1,7 +1,7 @@
 #!/bin/bash
 
 BASE="/volume1/Desa"
-EXCEL="/volume1/scripts/Rekap_Desa.csv"
+EXCEL="/volume1/scripts/daftar_desa.csv"
 
 # Convert Excel → CSV dulu
 # (pakai pandas / save manual dari Excel)
