@@ -14,8 +14,8 @@ df.columns = df.columns.str.strip()   # hapus spasi berlebih
 # Debug: tampilkan kolom
 print("Kolom terbaca:", df.columns.tolist())
 
-KOLOM_DESA = "Nama Desa"
-KOLOM_LINK = "Upload Dokumen"
+KOLOM_DESA = "Desa"
+KOLOM_LINK = "Upload File"
 KOLOM_NAMA_FILE = "Nama File Asli"
 
 for _, row in df.iterrows():
