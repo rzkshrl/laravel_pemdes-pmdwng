@@ -21,8 +21,7 @@ KOLOM_NAMA_FILE = "Nama File"
 
 for _, row in df.iterrows():
     kecamatan = str(row[KOLOM_KEC]).strip()
-    desaspc = str(row[KOLOM_DESA]).strip()
-    desa = desaspc.replace(" ", "_")
+    desa = str(row[KOLOM_DESA]).strip().replace("-", "_")
     link = str(row[KOLOM_LINK]).strip()
     fname = str(row[KOLOM_NAMA_FILE]).strip()
 

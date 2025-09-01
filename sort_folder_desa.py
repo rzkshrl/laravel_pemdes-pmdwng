@@ -13,10 +13,13 @@ for _, row in df.iterrows():
     desa = str(row["Desa"]).strip().replace(" ", "_")
     username = desa.lower()
 
-    # Buat folder Kecamatan/Desa
+    # Buat folder Kecamatan/Desa jika belum ada
     folder_path = os.path.join(BASE_PATH, kecamatan, desa)
-    os.makedirs(folder_path, exist_ok=True)
-    print(f"✅ Folder dibuat: {folder_path}")
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+        print(f"✅ Folder dibuat: {folder_path}")
+    else:
+        print(f"⚠️ Folder sudah ada: {folder_path}")
 
     # Buat user per desa (jika belum ada)
     try:
@@ -26,7 +29,7 @@ for _, row in df.iterrows():
         )
         print(f"✅ User dibuat: {username}")
     except Exception as e:
-        print(f"⚠️ User {username} mungkin sudah ada. {e}")
+        print(f"⚠️ User {username} gagal dibuat/sudah ada. {e}")
 
     # Atur permission hanya untuk user desa tsb
     try:
