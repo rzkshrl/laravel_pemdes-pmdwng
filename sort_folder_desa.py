@@ -35,7 +35,7 @@ for _, row in df.iterrows():
     try:
         subprocess.run(
             ["synoacltool", "-add", folder_path, f"user:{username}:allow:rwxpdDaARWcCo"],
-            check=True
+            capture_output=True, text=True, check=True
         )
         print(f"✅ Permission diberikan ke {username} untuk {folder_path}")
     except Exception as e:
