@@ -24,8 +24,8 @@ for _, row in df.iterrows():
     # Buat user per desa (jika belum ada)
     try:
         subprocess.run(
-            [f"synouser --add {username} password123 {username} 0 "" 0"],
-            check=True
+            ["synouser", "--add", username, "password123", username, username, "/sbin/nologin", "0"],
+            capture_output=True, text=True, check=True
         )
         print(f"✅ User dibuat: {username}")
     except Exception as e:
