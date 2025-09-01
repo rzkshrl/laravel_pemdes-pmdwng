@@ -3,7 +3,7 @@ import pandas as pd
 import subprocess
 
 # Load Excel daftar desa
-df = pd.read_excel("/volume1/scripts/Rekap Aparat Pemerintah Desa.xlsx")
+df = pd.read_excel("/volume1/scripts/daftar_desa.xlsx")
 
 BASE_PATH = "/volume1/PemdesData/Data Desa"
 
