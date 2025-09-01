@@ -24,7 +24,7 @@ for _, row in df.iterrows():
     # Buat user per desa (jika belum ada)
     try:
         subprocess.run(
-            ["synouser --add {username} 12345 {username} {username} 0 0"],
+            [f"synouser --add {username} password123 {username} 0 "" 0"],
             check=True
         )
         print(f"✅ User dibuat: {username}")
