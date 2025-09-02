@@ -2,6 +2,17 @@ import os
 import pandas as pd
 import subprocess
 
+# --- Helpers & toggles ---
+ENABLE_LOCK_PARENTS = False  # set True only if you really want to hide Kecamatan/root from listing
+
+def run_cmd(cmd, ok_msg, err_msg):
+    rc = os.system(cmd)
+    if rc == 0:
+        print(ok_msg)
+    else:
+        print(f"{err_msg} (exit={rc})")
+    return rc
+
 # Load Excel daftar desa
 df = pd.read_excel("/volume1/scripts/daftar_desa.xlsx")
 print("Columns in Excel file:", df.columns.tolist())  # Debug: print column names
@@ -34,16 +45,17 @@ for _, row in df.iterrows():
     except Exception as e:
         print(f"⚠️ User {username} gagal dibuat/sudah ada. {e}")
 
-    # Tambah akses shared folder level root
+    # Tambah akses shared folder level root (cek dulu)
     try:
-        share_check = os.popen(f"synoshare --getuser {SHARED_FOLDER}").read()
-        if f"{username}:RW" in share_check:
+        share_info = os.popen(f"synoshare --get {SHARED_FOLDER} 2>/dev/null").read()
+        if (username in share_info) and ("RW" in share_info.split(username)[-1][:20]):
             print(f"⚠️ Shared folder sudah RW untuk {username}")
         else:
-            os.system(f"synoshare --setuser {SHARED_FOLDER} {username} RW")
-            print(f"✅ Shared folder access diberikan ke {username}")
+            run_cmd(f"synoshare --setuser {SHARED_FOLDER} {username} RW",
+                    f"✅ Shared folder access diberikan ke {username}",
+                    f"⚠️ Gagal set shared folder {username}")
     except Exception as e:
-        print(f"⚠️ Gagal set shared folder {username}. {e}")
+        print(f"⚠️ Gagal cek/set shared folder {username}. {e}")
 
     # Atur permission hanya untuk user desa tsb
     try:
@@ -51,8 +63,9 @@ for _, row in df.iterrows():
         if "allow" in acl_check:
             print(f"⚠️ Permission sudah ada untuk {username} di {folder_path}")
         else:
-            os.system(f"synoacltool -add '{folder_path}' 'user:{username}:allow:rwxpdDaARWcCo:fd--'")
-            print(f"✅ Permission diberikan ke {username} untuk {folder_path}")
+            run_cmd(f"synoacltool -add '{folder_path}' 'user:{username}:allow:rwxpdDaARWcCo:fd--' 2>/dev/null",
+                    f"✅ Permission diberikan ke {username} untuk {folder_path}",
+                    f"⚠️ Gagal set permission {username} di {folder_path}")
     except Exception as e:
         print(f"⚠️ Gagal set permission {username}. {e}")
 
@@ -69,25 +82,34 @@ for _, row in df.iterrows():
     except Exception as e:
         print(f"⚠️ Gagal membuat symlink untuk {username}. {e}")
 
-    # Lock folder kecamatan agar user tidak bisa intip desa lain
-    try:
-        kec_path = os.path.join(BASE_PATH, kecamatan)
-        kec_acl_check = os.popen(f"synoacltool -get '{kec_path}' | grep everyone@").read()
-        if "deny" in kec_acl_check:
-            print(f"⚠️ Folder {kecamatan} sudah di-lock")
-        else:
-            os.system(f"synoacltool -add '{kec_path}' 'everyone@:deny:r-x---a-R-c--:fd--' 2>/dev/null")
-            print(f"🔒 Lock folder {kecamatan}")
-    except Exception as e:
-        print(f"⚠️ Gagal lock folder {kecamatan}. {e}")
+    # (Opsional) Lock folder kecamatan agar user tidak bisa intip desa lain
+    if ENABLE_LOCK_PARENTS:
+        try:
+            kec_path = os.path.join(BASE_PATH, kecamatan)
+            kec_acl = os.popen(f"synoacltool -get '{kec_path}' 2>/dev/null").read()
+            # Hindari pola dengan tanda '-' yang memicu error; jika perlu, gunakan deny minimal 'r' saja.
+            if "everyone@" in kec_acl and "deny" in kec_acl:
+                print(f"⚠️ Folder {kecamatan} sudah di-lock")
+            else:
+                run_cmd(f"synoacltool -add '{kec_path}' 'everyone@:deny:r:fd--' 2>/dev/null",
+                        f"🔒 Lock folder {kecamatan}",
+                        f"⚠️ Gagal lock folder {kecamatan}")
+        except Exception as e:
+            print(f"⚠️ Gagal lock folder {kecamatan}. {e}")
+    else:
+        pass
 
-    # Lock root folder agar semua user tidak bisa melihat isi selain foldernya sendiri
-    try:
-        root_acl_check = os.popen(f"synoacltool -get '{BASE_PATH}' | grep everyone@").read()
-        if "deny" in root_acl_check:
-            print(f"⚠️ Root folder {BASE_PATH} sudah di-lock")
-        else:
-            os.system(f"synoacltool -add '{BASE_PATH}' 'everyone@:deny:r-x---a-R-c--:fd--' 2>/dev/null")
-            print(f"🔒 Lock root folder {BASE_PATH}")
-    except Exception as e:
-        print(f"⚠️ Gagal lock root folder {BASE_PATH}. {e}")
+    # (Opsional) Lock root folder agar semua user tidak bisa melihat isi selain foldernya sendiri
+    if ENABLE_LOCK_PARENTS:
+        try:
+            root_acl = os.popen(f"synoacltool -get '{BASE_PATH}' 2>/dev/null").read()
+            if "everyone@" in root_acl and "deny" in root_acl:
+                print(f"⚠️ Root folder {BASE_PATH} sudah di-lock")
+            else:
+                run_cmd(f"synoacltool -add '{BASE_PATH}' 'everyone@:deny:r:fd--' 2>/dev/null",
+                        f"🔒 Lock root folder {BASE_PATH}",
+                        f"⚠️ Gagal lock root folder {BASE_PATH}")
+        except Exception as e:
+            print(f"⚠️ Gagal lock root folder {BASE_PATH}. {e}")
+    else:
+        pass
