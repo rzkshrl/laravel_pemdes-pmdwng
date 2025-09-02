@@ -3,7 +3,7 @@ import pandas as pd
 import subprocess
 
 # --- Helpers & toggles ---
-ENABLE_LOCK_PARENTS = False  # set True only if you really want to hide Kecamatan/root from listing
+ENABLE_LOCK_PARENTS = True  # set True only if you really want to hide Kecamatan/root from listing
 
 def run_cmd(cmd, ok_msg, err_msg):
     rc = os.system(cmd)
