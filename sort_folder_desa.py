@@ -44,12 +44,6 @@ for _, row in df.iterrows():
     except Exception as e:
         print(f"⚠️ Gagal set permission {username}. {e}")
 
-    # Pastikan user bisa browse shared folder root
-    try:
-        os.system(f"synoacltool -add '/volume1/{SHARED_FOLDER}' 'user:{username}:allow:r-x---a-R-c--:fd--'")
-        print(f"✅ Browse access diberikan ke {username} di shared folder root")
-    except Exception as e:
-        print(f"⚠️ Gagal set browse access {username}. {e}")
 
     # Lock folder kecamatan agar user tidak bisa intip desa lain
     try:
@@ -58,3 +52,10 @@ for _, row in df.iterrows():
         print(f"🔒 Lock folder {kecamatan}")
     except Exception as e:
         print(f"⚠️ Gagal lock folder {kecamatan}. {e}")
+
+    # Lock root folder agar semua user tidak bisa melihat isi selain foldernya sendiri
+    try:
+        os.system(f"synoacltool -add '{BASE_PATH}' 'everyone@:deny:r-x---a-R-c--:fd--' 2>/dev/null")
+        print(f"🔒 Lock root folder {BASE_PATH}")
+    except Exception as e:
+        print(f"⚠️ Gagal lock root folder {BASE_PATH}. {e}")
