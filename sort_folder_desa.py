@@ -39,15 +39,22 @@ for _, row in df.iterrows():
 
     # Atur permission hanya untuk user desa tsb
     try:
-        os.system(f"synoacltool -add {folder_path} user:{username}:allow:rwxpdDaARWcCo")
+        os.system(f"synoacltool -add '{folder_path}' 'user:{username}:allow:rwxpdDaARWcCo:fd--'")
         print(f"✅ Permission diberikan ke {username} untuk {folder_path}")
     except Exception as e:
         print(f"⚠️ Gagal set permission {username}. {e}")
 
+    # Pastikan user bisa browse shared folder root
+    try:
+        os.system(f"synoacltool -add '/volume1/{SHARED_FOLDER}' 'user:{username}:allow:r-x---a-R-c--:fd--'")
+        print(f"✅ Browse access diberikan ke {username} di shared folder root")
+    except Exception as e:
+        print(f"⚠️ Gagal set browse access {username}. {e}")
+
     # Lock folder kecamatan agar user tidak bisa intip desa lain
     try:
         kec_path = os.path.join(BASE_PATH, kecamatan)
-        os.system(f"synoacltool -set {kec_path} 'everyone@:deny:r-x---a-R-c--'")
+        os.system(f"synoacltool -add '{kec_path}' 'everyone@:deny:r-x---a-R-c--:fd--' 2>/dev/null")
         print(f"🔒 Lock folder {kecamatan}")
     except Exception as e:
         print(f"⚠️ Gagal lock folder {kecamatan}. {e}")
