@@ -7,11 +7,13 @@ df = pd.read_excel("/volume1/scripts/daftar_desa.xlsx")
 print("Columns in Excel file:", df.columns.tolist())  # Debug: print column names
 
 BASE_PATH = "/volume1/PemdesData/Data Desa"
+SHARED_FOLDER = "PemdesData"  # nama shared folder di DSM
 
 for _, row in df.iterrows():
     kecamatan = str(row["Kecamatan"]).strip().replace(" ", "_")
     desa = str(row["Desa"]).strip().replace(" ", "_")
     username = desa.lower()
+    usernameKecamatan = kecamatan.lower()
 
     # Buat folder Kecamatan/Desa jika belum ada
     folder_path = os.path.join(BASE_PATH, kecamatan, desa)
@@ -23,23 +25,29 @@ for _, row in df.iterrows():
 
     # Buat user per desa (jika belum ada)
     try:
-        os.system(f"synouser --add {username} password123 {username} 0 '' 0")
-        # subprocess.run(
-        #     ["synouser", "--add", username, "password123", username, username, "/sbin/nologin", "0"],
-        #     capture_output=True, text=True, check=True
-        # )
+        os.system(f"synouser --add {username} password123 '{username}' 0 '' 0")
         print(f"✅ User dibuat: {username}")
     except Exception as e:
         print(f"⚠️ User {username} gagal dibuat/sudah ada. {e}")
 
+    # Tambah akses shared folder level root
+    try:
+        os.system(f"synoshare --setuser {SHARED_FOLDER} {username} RW")
+        print(f"✅ Shared folder access diberikan ke {username}")
+    except Exception as e:
+        print(f"⚠️ Gagal set shared folder {username}. {e}")
+
     # Atur permission hanya untuk user desa tsb
     try:
         os.system(f"synoacltool -add {folder_path} user:{username}:allow:rwxpdDaARWcCo")
-        
-        # subprocess.run(
-        #     ["synoacltool", "-add", folder_path, f"user:{username}:allow:rwxpdDaARWcCo"],
-        #     capture_output=True, text=True, check=True
-        # )
         print(f"✅ Permission diberikan ke {username} untuk {folder_path}")
     except Exception as e:
         print(f"⚠️ Gagal set permission {username}. {e}")
+
+    # Lock folder kecamatan agar user tidak bisa intip desa lain
+    try:
+        kec_path = os.path.join(BASE_PATH, kecamatan)
+        os.system(f"synoacltool -set {kec_path} 'everyone@:deny:r-x---a-R-c--'")
+        print(f"🔒 Lock folder {kecamatan}")
+    except Exception as e:
+        print(f"⚠️ Gagal lock folder {kecamatan}. {e}")
