@@ -29,14 +29,14 @@ for _, row in dfEarmark.iterrows():
 
     # Buat folder jika belum ada
     kec_folder = os.path.join(DEST_BASE, kecamatan)
-    desa_folder = os.path.join(kec_folder, desa, "Dana Desa 2025")
+    desa_folder = os.path.join(kec_folder, desa, "Dana Desa 2025", "EARMARK")
 
     src_file = os.path.join(SRC_DIR, fname)
     dest_file = os.path.join(desa_folder, fname)         
 
     if os.path.exists(src_file):
         if not os.path.exists(dest_file):
-            print(f"Memindahkan {fname} -> {os.path.join(kec_folder, desa, 'Dana Desa 2025')}/")
+            print(f"Memindahkan {fname} -> {desa_folder}/")
             shutil.move(src_file, dest_file)
     else:
         print(f"[WARNING] File {fname} tidak ditemukan di {SRC_DIR}")
@@ -63,14 +63,14 @@ for _, row in dfNonEarmark.iterrows():
 
     # Buat folder jika belum ada
     kec_folder = os.path.join(DEST_BASE, kecamatan)
-    desa_folder = os.path.join(kec_folder, desa, "Dana Desa 2025")
+    desa_folder = os.path.join(kec_folder, desa, "Dana Desa 2025", "NON-EARMARK")
 
     src_file = os.path.join(SRC_DIR, fname)
     dest_file = os.path.join(desa_folder, fname)         
 
     if os.path.exists(src_file):
         if not os.path.exists(dest_file):
-            print(f"Memindahkan {fname} -> {kec_folder}/{desa_folder}/")
+            print(f"Memindahkan {fname} -> {desa_folder}/")
             shutil.move(src_file, dest_file)
     else:
         print(f"[WARNING] File {fname} tidak ditemukan di {SRC_DIR}")
