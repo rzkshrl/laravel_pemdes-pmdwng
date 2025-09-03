@@ -3,7 +3,7 @@ import pandas as pd
 import subprocess
 
 # --- Helpers & toggles ---
-ENABLE_LOCK_PARENTS = True  # set True only if you really want to hide Kecamatan/root from listing
+ENABLE_LOCK_PARENTS = False  # set True only if you really want to hide Kecamatan/root from listing
 
 def run_cmd(cmd, ok_msg, err_msg):
     rc = os.system(cmd)
@@ -70,17 +70,19 @@ for _, row in df.iterrows():
         print(f"⚠️ Gagal set permission {username}. {e}")
 
 
-    # Buat symlink ke folder desa di home user
+
+    # Opsi 2: Jadikan folder desa sebagai My Drive langsung (bind mount)
     try:
-        user_home = f"/var/services/homes/{username}"
-        desa_link = os.path.join(user_home, "DesaKu")
-        if not os.path.exists(desa_link):
-            os.system(f"ln -s '{folder_path}' '{desa_link}'")
-            print(f"🔗 Symlink dibuat: {desa_link} -> {folder_path}")
+        user_drive = f"/var/services/homes/{username}/Drive"
+        if os.path.islink(user_drive) or os.path.exists(user_drive):
+            print(f"⚠️ My Drive sudah ada untuk {username}, skip bind")
         else:
-            print(f"⚠️ Symlink sudah ada untuk {username}")
+            os.makedirs(user_drive, exist_ok=True)
+            run_cmd(f"mount --bind '{folder_path}' '{user_drive}'",
+                    f"🔗 My Drive {username} diarahkan ke {folder_path}",
+                    f"⚠️ Gagal bind My Drive untuk {username}")
     except Exception as e:
-        print(f"⚠️ Gagal membuat symlink untuk {username}. {e}")
+        print(f"⚠️ Gagal setup My Drive untuk {username}. {e}")
 
     # (Opsional) Lock folder kecamatan agar user tidak bisa intip desa lain
     if ENABLE_LOCK_PARENTS:
@@ -91,7 +93,7 @@ for _, row in df.iterrows():
             if "everyone@" in kec_acl and "deny" in kec_acl:
                 print(f"⚠️ Folder {kecamatan} sudah di-lock")
             else:
-                run_cmd(f"synoacltool -add '{kec_path}' 'everyone@:deny:r:fd--' 2>/dev/null",
+                run_cmd(f"synoacltool -add '{kec_path}' 'everyone@:deny:r-x:fd--' 2>/dev/null",
                         f"🔒 Lock folder {kecamatan}",
                         f"⚠️ Gagal lock folder {kecamatan}")
         except Exception as e:
@@ -106,7 +108,7 @@ for _, row in df.iterrows():
             if "everyone@" in root_acl and "deny" in root_acl:
                 print(f"⚠️ Root folder {BASE_PATH} sudah di-lock")
             else:
-                run_cmd(f"synoacltool -add '{BASE_PATH}' 'everyone@:deny:r:fd--' 2>/dev/null",
+                run_cmd(f"synoacltool -add '{BASE_PATH}' 'everyone@:deny:r-x:fd--' 2>/dev/null",
                         f"🔒 Lock root folder {BASE_PATH}",
                         f"⚠️ Gagal lock root folder {BASE_PATH}")
         except Exception as e:
