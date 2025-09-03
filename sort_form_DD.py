@@ -4,7 +4,8 @@ import pandas as pd
 
 # Path NAS
 FORM_RESPONSES_XLSX = "/volume1/homes/adminpemdes/FormResponseGDriveSync/Monitoring Dana Desa Tahap 2 (Jawaban).xlsx"
-SRC_DIR = "/volume1/homes/adminpemdes/SynologyGDriveUpload/"
+SRC_DIR_EARMARK = "/volume1/homes/adminpemdes/SynologyGDriveUpload/EARMARK"
+SRC_DIR_NON_EARMARK = "/volume1/homes/adminpemdes/SynologyGDriveUpload/NON-EARMARK"
 DEST_BASE = "/volume1/PemdesData/Data Desa/"
 
 dfEarmark = pd.read_excel(FORM_RESPONSES_XLSX, sheet_name="Data EARMARK")
@@ -33,7 +34,7 @@ for _, row in dfEarmark.iterrows():
     kec_folder = os.path.join(DEST_BASE, kecamatan)
     desa_folder = os.path.join(kec_folder, desa, "Dana Desa 2025", "EARMARK")
 
-    src_file = os.path.join(SRC_DIR, fname)
+    src_file = os.path.join(SRC_DIR_EARMARK, fname)
     dest_file = os.path.join(desa_folder, fname)         
 
     if os.path.exists(src_file):
@@ -42,7 +43,7 @@ for _, row in dfEarmark.iterrows():
             print(f"Memindahkan {fname} -> {desa_folder}/")
             shutil.move(src_file, dest_file)
     else:
-        print(f"[WARNING] File {fname} tidak ditemukan di {SRC_DIR}")
+        print(f"[WARNING] File {fname} tidak ditemukan di {SRC_DIR_EARMARK}")
 
 dfNonEarmark = pd.read_excel(FORM_RESPONSES_XLSX, sheet_name="Data NON-EARMARK")
 
@@ -63,7 +64,7 @@ for _, row in dfNonEarmark.iterrows():
     desa_folder = os.path.join(kec_folder, desa, "Dana Desa 2025", "NON-EARMARK")
     os.makedirs(desa_folder, exist_ok=True)
 
-    src_file = os.path.join(SRC_DIR, fname)
+    src_file = os.path.join(SRC_DIR_NON_EARMARK, fname)
     dest_file = os.path.join(desa_folder, fname)         
 
     if os.path.exists(src_file):
@@ -71,4 +72,4 @@ for _, row in dfNonEarmark.iterrows():
             print(f"Memindahkan {fname} -> {desa_folder}/")
             shutil.move(src_file, dest_file)
     else:
-        print(f"[WARNING] File {fname} tidak ditemukan di {SRC_DIR}")
+        print(f"[WARNING] File {fname} tidak ditemukan di {SRC_DIR_NON_EARMARK}")
