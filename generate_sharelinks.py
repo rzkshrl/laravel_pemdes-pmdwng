@@ -10,7 +10,7 @@ import pandas as pd
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ---------- CONFIG ----------
-NAS_HOST = "https://pemdesnas.synology.me"           # ganti -> host/IP DSM
+NAS_HOST = "pemdesnas.synology.me"           # ganti -> host/IP DSM
 NAS_PORT = 5001
 ADMIN_USER = "adminpemdes"                   # user yang punya hak FileStation
 ADMIN_PASS = "Admin1234"                # simpan aman
