@@ -12,8 +12,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # ---------- CONFIG ----------
 NAS_HOST = "pemdesnas.synology.me"           # ganti -> host/IP DSM
 NAS_PORT = 5001
-ADMIN_USER = "adminpemdes"                   # user yang punya hak FileStation
-ADMIN_PASS = "Admin1234"                # simpan aman
+ADMIN_USER = "desaAPI"                   # user yang punya hak FileStation
+ADMIN_PASS = "pemdesnasAPI123"                # simpan aman
 EXCEL_PATH = "/volume1/scripts/daftar_desa.xlsx"
 BASE_FOLDER = "/volume1/PemdesData/Data Desa"
 OUT_CSV = "/volume1/scripts/desa_sharelinks.csv"
