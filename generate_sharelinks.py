@@ -80,13 +80,16 @@ def get_drive_share_for_path(path, sid):
     return None
 
 def get_teamfolder_id(sid, teamfolder_name="PemdesData"):
-    print(f"DEBUG: Fetching teamfolder list to find '{teamfolder_name}' ID...")
+    print(f"DEBUG: Fetching teamfolder list (v2) to find '{teamfolder_name}' ID...")
     try:
-        j = drive_api_call("SYNO.Drive.Teamfolder", "list", version=1, sid=sid)
+        j = drive_api_call("SYNO.Drive.Teamfolder", "list", version=2, sid=sid)
         if j.get("success") and "data" in j:
-            for tf in j["data"].get("items", []):
-                if tf.get("name") == teamfolder_name:
-                    print(f"DEBUG: Found teamfolder '{teamfolder_name}' with id: {tf.get('id')}")
+            tfs = j["data"].get("teamfolders", [])
+            print(f"DEBUG: Found {len(tfs)} teamfolders total.")
+            for tf in tfs:
+                print("  -", tf.get("name"), "id:", tf.get("id"))
+                if tf.get("name","").strip().lower() == teamfolder_name.lower():
+                    print(f"DEBUG: Matched teamfolder '{teamfolder_name}' with id: {tf.get('id')}")
                     return tf.get("id")
     except Exception as e:
         print(f"DEBUG: Error fetching teamfolder list: {e}")
