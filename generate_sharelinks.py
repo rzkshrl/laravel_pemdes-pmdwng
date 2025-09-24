@@ -80,7 +80,8 @@ def get_drive_share_for_path(path, sid):
     return None
 
 def create_drive_share_for_path(path, sid, expire_days=0):
-    api = "SYNO.Drive.Share"
+    api_getinfo = "SYNO.Drive.Files"
+    api_share = "SYNO.Drive.Share"
     try:
         import json
         # Pastikan path pakai format tanpa /volume1
@@ -89,12 +90,25 @@ def create_drive_share_for_path(path, sid, expire_days=0):
         else:
             path_for_api = path
 
-        items = json.dumps([{"type": "folder", "path": path_for_api}])
-        params = {"items": items}
-        if expire_days > 0:
-            params["expire_in_days"] = str(expire_days)
+        # Step 1: get file info to obtain id
+        paths_json = json.dumps([path_for_api])
+        params_getinfo = {"path_list": paths_json}
+        j_info = drive_api_call(api_getinfo, "getinfo", version=1, params=params_getinfo, sid=sid)
+        print("DEBUG getinfo:", j_info)
+        if not j_info.get("success") or "data" not in j_info or len(j_info["data"]) == 0:
+            print("  Failed to get info for path:", path_for_api)
+            return None
+        file_id = j_info["data"][0].get("id")
+        if not file_id:
+            print("  No id found for path:", path_for_api)
+            return None
 
-        j = drive_api_call(api, "create", version=2, params=params, sid=sid)
+        # Step 2: create share link using id
+        params_share = {"id": file_id}
+        if expire_days > 0:
+            params_share["expire_in_days"] = str(expire_days)
+
+        j = drive_api_call(api_share, "create", version=2, params=params_share, sid=sid)
         print("DEBUG create:", j)  # biar kelihatan respon asli
 
         if j.get("success") and "data" in j:
