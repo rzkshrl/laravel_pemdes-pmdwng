@@ -93,18 +93,23 @@ def create_drive_share_for_path(path, sid, expire_days=0):
         # Step 1: get file info to obtain id
         paths_json = json.dumps([path_for_api])
         params_getinfo = {"path_list": paths_json}
-        j_info = drive_api_call(api_getinfo, "getinfo", version=1, params=params_getinfo, sid=sid)
+        j_info = drive_api_call(api_getinfo, "getinfo", version=2, params=params_getinfo, sid=sid)
         print("DEBUG getinfo:", j_info)
-        if not j_info.get("success") or "data" not in j_info or len(j_info["data"]) == 0:
+        if not j_info.get("success") or "data" not in j_info:
             print("  Failed to get info for path:", path_for_api)
             return None
-        file_id = j_info["data"][0].get("id")
+        items = j_info["data"].get("items", [])
+        if len(items) == 0:
+            print("  No items found for path:", path_for_api)
+            return None
+        file_id = items[0].get("id")
         if not file_id:
             print("  No id found for path:", path_for_api)
             return None
 
         # Step 2: create share link using id
-        params_share = {"id": file_id}
+        items_param = json.dumps([{"type": "folder", "id": file_id}])
+        params_share = {"items": items_param}
         if expire_days > 0:
             params_share["expire_in_days"] = str(expire_days)
 
