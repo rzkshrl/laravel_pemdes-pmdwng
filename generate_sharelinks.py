@@ -212,6 +212,14 @@ def main():
     sid = login()
     print("Logged in, sid:", sid)
 
+    # Debug: list root to show available team folders
+    try:
+        jroot = drive_api_call("SYNO.Drive.Files", "list", version=2,
+                               params={"path_list": '["/"]'}, sid=sid)
+        print("DEBUG root list:", jroot)
+    except Exception as e:
+        print("DEBUG root list failed:", e)
+
     df = pd.read_excel(EXCEL_PATH)
     df.columns = df.columns.str.strip()
     required = ["Kecamatan", "Desa"]
