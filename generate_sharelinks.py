@@ -36,7 +36,7 @@ def login():
         "method": "login",
         "account": ADMIN_USER,
         "passwd": ADMIN_PASS,
-        "session": "Drive",
+        "session": "FileStation",
         "format": "sid"
     }
     r = session.get(url, params=params, verify=VERIFY_SSL, timeout=20)
@@ -80,52 +80,128 @@ def get_drive_share_for_path(path, sid):
     return None
 
 def create_drive_share_for_path(path, sid, expire_days=0):
+    """
+    Robust Drive share creator:
+    - normalize path (strip /volume1)
+    - try direct getinfo
+    - if getinfo fails (error 102), try to resolve path iteratively by listing parent folders
+      and performing case-insensitive matching of children names (helps when Drive expects
+      slightly different folder name casing/spacing).
+    - once we have a valid folder id, call SYNO.Drive.Share.create with the folder id.
+    - return public URL on success or None.
+    """
     api_getinfo = "SYNO.Drive.Files"
     api_share = "SYNO.Drive.Share"
-    try:
-        import json
-        # Pastikan path pakai format tanpa /volume1
-        if path.startswith("/volume1/"):
-            path_for_api = path.replace("/volume1", "", 1)
-        else:
-            path_for_api = path
+    import json
 
-        # Step 1: get file info to obtain id
-        paths_json = json.dumps([path_for_api])
-        params_getinfo = {"path_list": paths_json}
+    # normalize path (Drive expects path relative to drive root /TeamFolderName/...)
+    if path.startswith("/volume1/"):
+        path_for_api = path.replace("/volume1", "", 1)
+    else:
+        path_for_api = path
+    path_for_api = path_for_api.rstrip("/")
+
+    print("DEBUG path_for_api:", path_for_api)
+
+    # Try direct getinfo first
+    try:
+        params_getinfo = {"path_list": json.dumps([path_for_api])}
         j_info = drive_api_call(api_getinfo, "getinfo", version=2, params=params_getinfo, sid=sid)
         print("DEBUG getinfo:", j_info)
-        if not j_info.get("success") or "data" not in j_info:
-            print("  Failed to get info for path:", path_for_api)
-            return None
-        items = j_info["data"].get("items", [])
-        if len(items) == 0:
-            print("  No items found for path:", path_for_api)
-            return None
-        file_id = items[0].get("id")
-        if not file_id:
-            print("  No id found for path:", path_for_api)
+    except Exception as e:
+        print("DEBUG getinfo exception:", e)
+        j_info = {"success": False}
+
+    # If getinfo failed, try iterative resolution (case-insensitive child matching)
+    if not j_info.get("success"):
+        print("  getinfo failed, attempting iterative resolution of path segments...")
+        segments = [s for s in path_for_api.split("/") if s]
+        parent = "/"
+        resolved = []
+        ok = True
+        for seg in segments:
+            # try exact candidate first
+            candidate = parent.rstrip("/") + "/" + seg
+            try:
+                j = drive_api_call(api_getinfo, "getinfo", version=2, params={"path_list": json.dumps([candidate])}, sid=sid)
+                if j.get("success") and j.get("data", {}).get("items"):
+                    parent = candidate
+                    resolved.append(seg)
+                    continue
+            except Exception:
+                pass
+
+            # if exact not found, list parent and try case-insensitive match of children
+            try:
+                jlist = drive_api_call(api_getinfo, "list", version=2, params={"path_list": json.dumps([parent])}, sid=sid)
+                items = jlist.get("data", {}).get("items", [])
+                matched_name = None
+                for it in items:
+                    name = it.get("name", "")
+                    if name and name.strip().lower() == seg.strip().lower():
+                        matched_name = name
+                        break
+                if matched_name:
+                    parent = parent.rstrip("/") + "/" + matched_name
+                    resolved.append(matched_name)
+                    continue
+                else:
+                    # not found among children
+                    ok = False
+                    print(f"    Segment '{seg}' not found under parent '{parent}'")
+                    break
+            except Exception as e:
+                ok = False
+                print("    Error listing parent:", parent, "->", e)
+                break
+
+        if not ok:
+            print(f"  Could not resolve path segments for {path_for_api}, aborting.")
             return None
 
-        # Step 2: create share link using id
+        # final getinfo on resolved parent
+        try:
+            params_getinfo = {"path_list": json.dumps([parent])}
+            j_info = drive_api_call(api_getinfo, "getinfo", version=2, params=params_getinfo, sid=sid)
+            print("DEBUG resolved getinfo:", j_info)
+        except Exception as e:
+            print("  Resolved getinfo exception:", e)
+            return None
+
+        if not j_info.get("success"):
+            print("  Resolved getinfo still failed for:", parent)
+            return None
+
+    # Extract folder id
+    items = j_info.get("data", {}).get("items", [])
+    if not items:
+        print("  No items returned in getinfo for path:", path_for_api)
+        return None
+    file_id = items[0].get("id")
+    if not file_id:
+        print("  No id found in getinfo items for path:", path_for_api)
+        return None
+
+    # Create share using the id
+    try:
         items_param = json.dumps([{"type": "folder", "id": file_id}])
         params_share = {"items": items_param}
         if expire_days > 0:
             params_share["expire_in_days"] = str(expire_days)
-
         j = drive_api_call(api_share, "create", version=2, params=params_share, sid=sid)
-        print("DEBUG create:", j)  # biar kelihatan respon asli
-
+        print("DEBUG create:", j)
         if j.get("success") and "data" in j:
-            links = j["data"].get("links") or []
-            if isinstance(links, list) and len(links) > 0:
-                if isinstance(links[0], dict) and "url" in links[0]:
-                    return links[0]["url"]
-                else:
-                    return str(links[0])
-            return str(j["data"])
+            links = j["data"].get("links", []) or []
+            if isinstance(links, list) and len(links) > 0 and isinstance(links[0], dict) and "url" in links[0]:
+                return links[0]["url"]
+            # fallback: maybe data contains url directly
+            if isinstance(j["data"], dict):
+                for v in j["data"].values():
+                    if isinstance(v, str) and v.startswith("http"):
+                        return v
     except Exception as e:
         print("  Error create_share_for_path:", e)
+
     return None
 
 def ensure_path_slash(path):
