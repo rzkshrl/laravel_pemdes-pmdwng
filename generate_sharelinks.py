@@ -32,7 +32,7 @@ def login():
     url = f"{base_url}/webapi/auth.cgi"
     params = {
         "api": "SYNO.API.Auth",
-        "version": "2",
+        "version": "3",
         "method": "login",
         "account": ADMIN_USER,
         "passwd": ADMIN_PASS,

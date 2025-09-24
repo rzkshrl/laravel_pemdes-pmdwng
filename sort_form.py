@@ -16,16 +16,14 @@ print("Kolom terbaca:", df.columns.tolist())
 
 KOLOM_KEC = "Kecamatan"
 KOLOM_DESA = "Desa"
-KOLOM_LINK = "Upload File"
 KOLOM_NAMA_FILE = "Nama File"
 
 for _, row in df.iterrows():
     kecamatan = str(row[KOLOM_KEC]).strip()
     desa = str(row[KOLOM_DESA]).strip().replace("-", "_")
-    link = str(row[KOLOM_LINK]).strip()
     fname = str(row[KOLOM_NAMA_FILE]).strip()
 
-    print(f"[INFO] Desa={desa}, File={fname}, Link={link}")
+    print(f"[INFO] Desa={desa}, File={fname}")
 
     # Buat folder jika belum ada
     kec_folder = os.path.join(DEST_BASE, kecamatan)
