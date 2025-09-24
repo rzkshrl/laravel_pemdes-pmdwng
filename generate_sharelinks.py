@@ -79,116 +79,84 @@ def get_drive_share_for_path(path, sid):
         pass
     return None
 
+def get_teamfolder_id(sid, teamfolder_name="PemdesData"):
+    print(f"DEBUG: Fetching teamfolder list to find '{teamfolder_name}' ID...")
+    try:
+        j = drive_api_call("SYNO.Drive.Teamfolder", "list", version=1, sid=sid)
+        if j.get("success") and "data" in j:
+            for tf in j["data"].get("items", []):
+                if tf.get("name") == teamfolder_name:
+                    print(f"DEBUG: Found teamfolder '{teamfolder_name}' with id: {tf.get('id')}")
+                    return tf.get("id")
+    except Exception as e:
+        print(f"DEBUG: Error fetching teamfolder list: {e}")
+    print(f"DEBUG: Teamfolder '{teamfolder_name}' not found.")
+    return None
+
 def create_drive_share_for_path(path, sid, expire_days=0):
     """
     Robust Drive share creator:
-    - normalize path (strip /volume1)
-    - try direct getinfo
-    - if getinfo fails (error 102), try to resolve path iteratively by listing parent folders
-      and performing case-insensitive matching of children names (helps when Drive expects
-      slightly different folder name casing/spacing).
-    - once we have a valid folder id, call SYNO.Drive.Share.create with the folder id.
-    - return public URL on success or None.
+    - Use teamfolder id for 'PemdesData'
+    - Traverse subfolders by listing children with SYNO.Drive.Files.list and matching names case-insensitively
+    - Finally create share for the resolved folder id
+    - Return public URL on success or None
     """
-    api_getinfo = "SYNO.Drive.Files"
-    api_share = "SYNO.Drive.Share"
     import json
 
-    # normalize path (Drive expects path relative to drive root /TeamFolderName/...)
-    if path.startswith("/volume1/"):
-        path_for_api = path.replace("/volume1", "", 1)
-    else:
-        path_for_api = path
-    path_for_api = path_for_api.rstrip("/")
+    # Normalize path and remove /volume1/PemdesData prefix
+    prefix = "/volume1/PemdesData"
+    if not path.startswith(prefix):
+        print(f"DEBUG: Path '{path}' does not start with expected prefix '{prefix}'")
+        return None
 
-    print("DEBUG path_for_api:", path_for_api)
+    subpath = path[len(prefix):].lstrip("/")
+    print(f"DEBUG: Subpath inside PemdesData: '{subpath}'")
 
-    # Try direct getinfo first
-    try:
-        params_getinfo = {"path_list": json.dumps([path_for_api])}
-        j_info = drive_api_call(api_getinfo, "getinfo", version=2, params=params_getinfo, sid=sid)
-        print("DEBUG getinfo:", j_info)
-    except Exception as e:
-        print("DEBUG getinfo exception:", e)
-        j_info = {"success": False}
+    # Get teamfolder id for PemdesData
+    teamfolder_id = get_teamfolder_id(sid, "PemdesData")
+    if not teamfolder_id:
+        print("DEBUG: Could not find teamfolder id for 'PemdesData'")
+        return None
 
-    # If getinfo failed, try iterative resolution (case-insensitive child matching)
-    if not j_info.get("success"):
-        print("  getinfo failed, attempting iterative resolution of path segments...")
-        segments = [s for s in path_for_api.split("/") if s]
-        parent = "/"
-        resolved = []
-        ok = True
-        for seg in segments:
-            # try exact candidate first
-            candidate = parent.rstrip("/") + "/" + seg
-            try:
-                j = drive_api_call(api_getinfo, "getinfo", version=2, params={"path_list": json.dumps([candidate])}, sid=sid)
-                if j.get("success") and j.get("data", {}).get("items"):
-                    parent = candidate
-                    resolved.append(seg)
-                    continue
-            except Exception:
-                pass
+    # Traverse subfolders by segments
+    segments = [s for s in subpath.split("/") if s]
+    current_id = teamfolder_id
+    api_files = "SYNO.Drive.Files"
 
-            # if exact not found, list parent and try case-insensitive match of children
-            try:
-                jlist = drive_api_call(api_getinfo, "list", version=2, params={"path_list": json.dumps([parent])}, sid=sid)
-                items = jlist.get("data", {}).get("items", [])
-                matched_name = None
-                for it in items:
-                    name = it.get("name", "")
-                    if name and name.strip().lower() == seg.strip().lower():
-                        matched_name = name
-                        break
-                if matched_name:
-                    parent = parent.rstrip("/") + "/" + matched_name
-                    resolved.append(matched_name)
-                    continue
-                else:
-                    # not found among children
-                    ok = False
-                    print(f"    Segment '{seg}' not found under parent '{parent}'")
-                    break
-            except Exception as e:
-                ok = False
-                print("    Error listing parent:", parent, "->", e)
-                break
-
-        if not ok:
-            print(f"  Could not resolve path segments for {path_for_api}, aborting.")
-            return None
-
-        # final getinfo on resolved parent
+    for seg in segments:
+        print(f"DEBUG: Listing children of id {current_id} to find segment '{seg}'...")
         try:
-            params_getinfo = {"path_list": json.dumps([parent])}
-            j_info = drive_api_call(api_getinfo, "getinfo", version=2, params=params_getinfo, sid=sid)
-            print("DEBUG resolved getinfo:", j_info)
+            params_list = {"id_list": json.dumps([current_id])}
+            jlist = drive_api_call(api_files, "list", version=2, params=params_list, sid=sid)
+            if not jlist.get("success"):
+                print(f"DEBUG: Failed to list children of id {current_id}")
+                return None
+            items = jlist.get("data", {}).get("items", [])
+            matched_id = None
+            for it in items:
+                name = it.get("name", "")
+                if name and name.strip().lower() == seg.strip().lower():
+                    matched_id = it.get("id")
+                    print(f"DEBUG: Matched segment '{seg}' to id {matched_id}")
+                    break
+            if not matched_id:
+                print(f"DEBUG: Segment '{seg}' not found under id {current_id}")
+                return None
+            current_id = matched_id
         except Exception as e:
-            print("  Resolved getinfo exception:", e)
+            print(f"DEBUG: Exception listing children of id {current_id}: {e}")
             return None
 
-        if not j_info.get("success"):
-            print("  Resolved getinfo still failed for:", parent)
-            return None
-
-    # Extract folder id
-    items = j_info.get("data", {}).get("items", [])
-    if not items:
-        print("  No items returned in getinfo for path:", path_for_api)
-        return None
-    file_id = items[0].get("id")
-    if not file_id:
-        print("  No id found in getinfo items for path:", path_for_api)
-        return None
+    # current_id is the id of the final folder
+    print(f"DEBUG: Final folder id to share: {current_id}")
 
     # Create share using the id
     try:
-        items_param = json.dumps([{"type": "folder", "id": file_id}])
+        items_param = json.dumps([{"type": "folder", "id": current_id}])
         params_share = {"items": items_param}
         if expire_days > 0:
             params_share["expire_in_days"] = str(expire_days)
-        j = drive_api_call(api_share, "create", version=2, params=params_share, sid=sid)
+        j = drive_api_call("SYNO.Drive.Share", "create", version=2, params=params_share, sid=sid)
         print("DEBUG create:", j)
         if j.get("success") and "data" in j:
             links = j["data"].get("links", []) or []
