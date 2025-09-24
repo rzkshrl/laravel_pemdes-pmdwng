@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # generate_sharelinks.py
-# Men-generate share link untuk setiap folder desa via DSM WebAPI (FileStation.Sharing)
+# Men-generate share link untuk setiap folder desa via DSM WebAPI (Synology Drive Sharing)
 # Output: /volume1/scripts/desa_sharelinks.csv  (Kecamatan,Desa,FolderPath,ShareLink)
 
 import os, sys, time, urllib3
@@ -12,7 +12,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # ---------- CONFIG ----------
 NAS_HOST = "pemdesnas.synology.me"           # ganti -> host/IP DSM
 NAS_PORT = 5001
-ADMIN_USER = "desaAPI"                   # user yang punya hak FileStation
+ADMIN_USER = "desaAPI"                   # user yang punya hak Drive
 ADMIN_PASS = "pemdesnasAPI123"                # simpan aman
 EXCEL_PATH = "/volume1/scripts/daftar_desa.xlsx"
 BASE_FOLDER = "/volume1/PemdesData/Data Desa"
@@ -36,7 +36,7 @@ def login():
         "method": "login",
         "account": ADMIN_USER,
         "passwd": ADMIN_PASS,
-        "session": "FileStation",
+        "session": "Drive",
         "format": "sid"
     }
     r = session.get(url, params=params, verify=VERIFY_SSL, timeout=20)
@@ -49,59 +49,60 @@ def login():
 
 def logout(sid):
     url = f"{base_url}/webapi/auth.cgi"
-    params = {"api":"SYNO.API.Auth","version":2,"method":"logout","session":"FileStation","_sid":sid}
+    params = {"api":"SYNO.API.Auth","version":2,"method":"logout","session":"Drive","_sid":sid}
     try:
         session.get(url, params=params, verify=VERIFY_SSL, timeout=10)
     except:
         pass
 
-def fs_api_call(api, method, version=3, params=None, sid=None):
-    # generic call to entry.cgi
+def drive_api_call(api, method, version=1, params=None, sid=None):
+    # generic call to entry.cgi for Drive API using POST
     url = f"{base_url}/webapi/entry.cgi"
     p = {"api": api, "version": version, "method": method}
     if params:
         p.update(params)
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    data = p
     if sid:
-        p["_sid"] = sid
-    r = session.get(url, params=p, verify=VERIFY_SSL, timeout=30)
+        data["_sid"] = sid
+    r = session.post(url, data=data, verify=VERIFY_SSL, timeout=30)
     r.raise_for_status()
     return r.json()
 
-def get_share_list_for_path(path, sid):
-    # try multiple versions if needed
-    api = "SYNO.FileStation.Sharing"
-    for ver in (3,2,1):
-        try:
-            j = fs_api_call(api, "list", version=ver, params={"path": path}, sid=sid)
-            if j.get("success") and "data" in j:
-                return j["data"]
-        except Exception:
-            continue
+def get_drive_share_for_path(path, sid):
+    api = "SYNO.Drive.Share"
+    try:
+        j = drive_api_call(api, "list", version=1, params={"path": path}, sid=sid)
+        if j.get("success") and "data" in j:
+            return j["data"]
+    except Exception:
+        pass
     return None
 
-def create_share_for_path(path, sid, expire_days=0):
-    api = "SYNO.FileStation.Sharing"
-    for ver in (3,2,1):
-        try:
-            params = {"path": path, "expire_in_days": str(expire_days)}
-            j = fs_api_call(api, "create", version=ver, params=params, sid=sid)
-            if j.get("success") and "data" in j:
-                # data.links may be present
-                links = j["data"].get("links") or j["data"]
-                # try to return first url found
-                if isinstance(links, list) and len(links) > 0:
-                    if isinstance(links[0], dict) and "url" in links[0]:
-                        return links[0]["url"]
-                    else:
-                        return str(links[0])
-                # fallback
-                return str(j["data"])
-        except Exception:
-            continue
+def create_drive_share_for_path(path, sid, expire_days=0):
+    api = "SYNO.Drive.Share"
+    try:
+        # items parameter is JSON array string with id and type
+        import json
+        items = json.dumps([{"id": path, "type": "path"}])
+        params = {"items": items}
+        if expire_days > 0:
+            params["expire_in_days"] = str(expire_days)
+        j = drive_api_call(api, "create", version=1, params=params, sid=sid)
+        if j.get("success") and "data" in j:
+            links = j["data"].get("links") or []
+            if isinstance(links, list) and len(links) > 0:
+                if isinstance(links[0], dict) and "url" in links[0]:
+                    return links[0]["url"]
+                else:
+                    return str(links[0])
+            return str(j["data"])
+    except Exception:
+        pass
     return None
 
 def ensure_path_slash(path):
-    # FileStation expects Unix-style path; ensure no trailing slash except root
+    # Drive expects Unix-style path; ensure no trailing slash except root
     return path.rstrip("/") if path != "/" else path
 
 def main():
@@ -130,19 +131,16 @@ def main():
             rows_out.append({"Kecamatan":kec,"Desa":desa,"FolderPath":folder_path,"ShareLink":""})
             continue
 
-        # check existing shares
-        existing = get_share_list_for_path(folder_path, sid)
         link = ""
         try:
+            existing = get_drive_share_for_path(folder_path, sid)
             if existing and isinstance(existing, dict) and existing.get("links"):
-                # pick first active link
                 links = existing["links"]
-                if isinstance(links, list) and len(links)>0:
-                    link = links[0].get("url","")
-            # if no existing, create
+                if isinstance(links, list) and len(links) > 0:
+                    link = links[0].get("url", "")
             if not link:
                 print("  Creating share link...")
-                link = create_share_for_path(folder_path, sid, expire_days=EXPIRE_DAYS)
+                link = create_drive_share_for_path(folder_path, sid, expire_days=EXPIRE_DAYS)
                 if link:
                     print("  Created ->", link)
                 else:
