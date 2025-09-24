@@ -82,13 +82,21 @@ def get_drive_share_for_path(path, sid):
 def create_drive_share_for_path(path, sid, expire_days=0):
     api = "SYNO.Drive.Share"
     try:
-        # items parameter is JSON array string with id and type
         import json
-        items = json.dumps([{"id": path, "type": "path"}])
+        # Pastikan path pakai format tanpa /volume1
+        if path.startswith("/volume1/"):
+            path_for_api = path.replace("/volume1", "", 1)
+        else:
+            path_for_api = path
+
+        items = json.dumps([{"type": "folder", "path": path_for_api}])
         params = {"items": items}
         if expire_days > 0:
             params["expire_in_days"] = str(expire_days)
-        j = drive_api_call(api, "create", version=1, params=params, sid=sid)
+
+        j = drive_api_call(api, "create", version=2, params=params, sid=sid)
+        print("DEBUG create:", j)  # biar kelihatan respon asli
+
         if j.get("success") and "data" in j:
             links = j["data"].get("links") or []
             if isinstance(links, list) and len(links) > 0:
@@ -97,8 +105,8 @@ def create_drive_share_for_path(path, sid, expire_days=0):
                 else:
                     return str(links[0])
             return str(j["data"])
-    except Exception:
-        pass
+    except Exception as e:
+        print("  Error create_share_for_path:", e)
     return None
 
 def ensure_path_slash(path):
