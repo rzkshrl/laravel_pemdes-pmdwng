@@ -79,83 +79,26 @@ def get_drive_share_for_path(path, sid):
         pass
     return None
 
-def get_teamfolder_id(sid, teamfolder_name="PemdesData"):
-    print(f"DEBUG: Fetching teamfolder list (v2) to find '{teamfolder_name}' ID...")
-    try:
-        j = drive_api_call("SYNO.Drive.Teamfolder", "list", version=2, sid=sid)
-        if j.get("success") and "data" in j:
-            tfs = j["data"].get("teamfolders", [])
-            print(f"DEBUG: Found {len(tfs)} teamfolders total.")
-            for tf in tfs:
-                print("  -", tf.get("name"), "id:", tf.get("id"))
-                if tf.get("name","").strip().lower() == teamfolder_name.lower():
-                    print(f"DEBUG: Matched teamfolder '{teamfolder_name}' with id: {tf.get('id')}")
-                    return tf.get("id")
-    except Exception as e:
-        print(f"DEBUG: Error fetching teamfolder list: {e}")
-    print(f"DEBUG: Teamfolder '{teamfolder_name}' not found.")
-    return None
-
 def create_drive_share_for_path(path, sid, expire_days=0):
     """
-    Robust Drive share creator:
-    - Use teamfolder id for 'PemdesData'
-    - Traverse subfolders by listing children with SYNO.Drive.Files.list and matching names case-insensitively
-    - Finally create share for the resolved folder id
-    - Return public URL on success or None
+    Buat share link langsung berdasarkan path (pakai FileStation untuk validasi).
     """
     import json
 
-    # Normalize path and remove /volume1/PemdesData prefix
-    prefix = "/volume1/PemdesData"
-    if not path.startswith(prefix):
-        print(f"DEBUG: Path '{path}' does not start with expected prefix '{prefix}'")
-        return None
-
-    subpath = path[len(prefix):].lstrip("/")
-    print(f"DEBUG: Subpath inside PemdesData: '{subpath}'")
-
-    # Get teamfolder id for PemdesData
-    teamfolder_id = get_teamfolder_id(sid, "PemdesData")
-    if not teamfolder_id:
-        print("DEBUG: Could not find teamfolder id for 'PemdesData'")
-        return None
-
-    # Traverse subfolders by segments
-    segments = [s for s in subpath.split("/") if s]
-    current_id = teamfolder_id
-    api_files = "SYNO.Drive.Files"
-
-    for seg in segments:
-        print(f"DEBUG: Listing children of id {current_id} to find segment '{seg}'...")
-        try:
-            params_list = {"id_list": json.dumps([current_id])}
-            jlist = drive_api_call(api_files, "list", version=2, params=params_list, sid=sid)
-            if not jlist.get("success"):
-                print(f"DEBUG: Failed to list children of id {current_id}")
-                return None
-            items = jlist.get("data", {}).get("items", [])
-            matched_id = None
-            for it in items:
-                name = it.get("name", "")
-                if name and name.strip().lower() == seg.strip().lower():
-                    matched_id = it.get("id")
-                    print(f"DEBUG: Matched segment '{seg}' to id {matched_id}")
-                    break
-            if not matched_id:
-                print(f"DEBUG: Segment '{seg}' not found under id {current_id}")
-                return None
-            current_id = matched_id
-        except Exception as e:
-            print(f"DEBUG: Exception listing children of id {current_id}: {e}")
-            return None
-
-    # current_id is the id of the final folder
-    print(f"DEBUG: Final folder id to share: {current_id}")
-
-    # Create share using the id
+    # pastikan path valid di FileStation
     try:
-        items_param = json.dumps([{"type": "folder", "id": current_id}])
+        res = drive_api_call("SYNO.FileStation.List", "list", version=2,
+                             params={"folder_path": path}, sid=sid)
+        if not res.get("success"):
+            print(f"DEBUG: Path '{path}' tidak valid di FileStation")
+            return None
+    except Exception as e:
+        print(f"DEBUG: Gagal validasi path {path} di FileStation: {e}")
+        return None
+
+    # create share link
+    try:
+        items_param = json.dumps([{"type": "folder", "path": path}])
         params_share = {"items": items_param}
         if expire_days > 0:
             params_share["expire_in_days"] = str(expire_days)
@@ -165,13 +108,8 @@ def create_drive_share_for_path(path, sid, expire_days=0):
             links = j["data"].get("links", []) or []
             if isinstance(links, list) and len(links) > 0 and isinstance(links[0], dict) and "url" in links[0]:
                 return links[0]["url"]
-            # fallback: maybe data contains url directly
-            if isinstance(j["data"], dict):
-                for v in j["data"].values():
-                    if isinstance(v, str) and v.startswith("http"):
-                        return v
     except Exception as e:
-        print("  Error create_share_for_path:", e)
+        print("  Error create_drive_share_for_path:", e)
 
     return None
 
