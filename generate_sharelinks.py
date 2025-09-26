@@ -15,7 +15,7 @@ NAS_PORT = 5001
 ADMIN_USER = "desaAPI"                   # user yang punya hak Drive
 ADMIN_PASS = "pemdesnasAPI123"                # simpan aman
 EXCEL_PATH = "/volume1/scripts/daftar_desa.xlsx"
-BASE_FOLDER = "/volume1/PemdesData/Data Desa"
+BASE_FOLDER = "/PemdesData/Data Desa"
 OUT_CSV = "/volume1/scripts/desa_sharelinks.csv"
 EXPIRE_DAYS = 0   # 0 = never expire; atau ganti ke angka (mis. 30)
 USE_HTTPS = True
