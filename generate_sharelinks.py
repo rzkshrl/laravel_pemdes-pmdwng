@@ -15,7 +15,7 @@ NAS_PORT = 5001
 ADMIN_USER = "desaAPI"                   # user yang punya hak Drive
 ADMIN_PASS = "pemdesnasAPI123"                # simpan aman
 EXCEL_PATH = "/volume1/scripts/daftar_desa.xlsx"
-BASE_FOLDER = "/PemdesData/Data Desa"
+BASE_FOLDER = "/PemdesData/Data Desa"  # Logical path for FileStation, not physical /volume1
 OUT_CSV = "/volume1/scripts/desa_sharelinks.csv"
 EXPIRE_DAYS = 0   # 0 = never expire; atau ganti ke angka (mis. 30)
 USE_HTTPS = True
@@ -146,8 +146,16 @@ def main():
         folder_path = ensure_path_slash(folder_path)
         print("Processing:", kec, "/", desa, "->", folder_path)
 
-        if not os.path.isdir(folder_path):
-            print("  [SKIP] folder not found:", folder_path)
+        # Validasi folder_path menggunakan FileStation API, bukan os.path.isdir
+        try:
+            res = drive_api_call("SYNO.FileStation.List", "list", version=2,
+                                params={"folder_path": folder_path}, sid=sid)
+            if not res.get("success"):
+                print(f"  [SKIP] folder not found in FileStation: {folder_path}")
+                rows_out.append({"Kecamatan":kec,"Desa":desa,"FolderPath":folder_path,"ShareLink":""})
+                continue
+        except Exception as e:
+            print(f"  [SKIP] Error validating folder in FileStation: {folder_path} ({e})")
             rows_out.append({"Kecamatan":kec,"Desa":desa,"FolderPath":folder_path,"ShareLink":""})
             continue
 
