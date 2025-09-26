@@ -49,23 +49,23 @@ def main():
     sid = login()
     print("✅ Logged in, SID:", sid)
 
-    # coba list teamfolder v2 dan v1
-    for ver in [2,1]:
-        print(f"\n=== SYNO.Drive.Teamfolder.list (v{ver}) ===")
-        try:
-            res = drive_api("SYNO.Drive.Teamfolder", "list", version=ver, sid=sid)
-            print(res)
-        except Exception as e:
-            print("Error v", ver, ":", e)
-
-    # coba list root path
-    print("\n=== SYNO.Drive.Files.list (root /) ===")
+    # list folder /PemdesData
+    print("\n=== SYNO.FileStation.List (path /PemdesData) ===")
     try:
-        res = drive_api("SYNO.Drive.Files", "list", version=2,
-                        params={"path_list": '["/"]'}, sid=sid)
+        res = drive_api("SYNO.FileStation.List", "list", version=2,
+                        params={"folder_path": "/PemdesData"}, sid=sid)
         print(res)
     except Exception as e:
-        print("Error root list:", e)
+        print("Error listing /PemdesData:", e)
+
+    # list folder /PemdesData/Data Desa
+    print("\n=== SYNO.FileStation.List (path /PemdesData/Data Desa) ===")
+    try:
+        res = drive_api("SYNO.FileStation.List", "list", version=2,
+                        params={"folder_path": "/PemdesData/Data Desa"}, sid=sid)
+        print(res)
+    except Exception as e:
+        print("Error listing /PemdesData/Data Desa:", e)
 
 if __name__ == "__main__":
     main()
