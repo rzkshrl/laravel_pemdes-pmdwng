@@ -96,21 +96,23 @@ def create_drive_share_for_path(path, sid, expire_days=0):
         print(f"DEBUG: Gagal validasi path {path} di FileStation: {e}")
         return None
 
-    # create share link
-    try:
-        items_param = json.dumps([{"type": "folder", "path": path}])
-        params_share = {"items": items_param}
-        if expire_days > 0:
-            params_share["expire_in_days"] = str(expire_days)
-        j = drive_api_call("SYNO.Drive.Share", "create", version=2, params=params_share, sid=sid)
-        print("DEBUG create:", j)
-        if j.get("success") and "data" in j:
-            links = j["data"].get("links", []) or []
-            if isinstance(links, list) and len(links) > 0 and isinstance(links[0], dict) and "url" in links[0]:
-                return links[0]["url"]
-    except Exception as e:
-        print("  Error create_drive_share_for_path:", e)
-
+    # create share link, try version=1 then version=2
+    items_param = json.dumps([{"type": "folder", "path": path}])
+    params_share = {"items": items_param}
+    if expire_days > 0:
+        params_share["expire_in_days"] = str(expire_days)
+    last_exc = None
+    for ver in [1, 2]:
+        try:
+            j = drive_api_call("SYNO.Drive.Share", "create", version=ver, params=params_share, sid=sid)
+            print(f"DEBUG create (version={ver}):", j)
+            if j.get("success") and "data" in j:
+                links = j["data"].get("links", []) or []
+                if isinstance(links, list) and len(links) > 0 and isinstance(links[0], dict) and "url" in links[0]:
+                    return links[0]["url"]
+        except Exception as e:
+            print(f"  Error create_drive_share_for_path version={ver}:", e)
+            last_exc = e
     return None
 
 def ensure_path_slash(path):
