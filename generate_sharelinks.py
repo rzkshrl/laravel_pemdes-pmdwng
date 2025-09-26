@@ -83,19 +83,34 @@ def get_drive_share_for_path(path, sid):
 def create_link_with_wrapper(path):
     try:
         drive = SynologyDrive(
-            host=NAS_HOST,
-            port=NAS_PORT,
+            base_url=f"{scheme}://{NAS_HOST}:{NAS_PORT}",
             username=ADMIN_USER,
             password=ADMIN_PASS,
-            secure=USE_HTTPS,
             verify_ssl=VERIFY_SSL,
         )
         # Pastikan login berhasil
         if not drive.login():
             print("DEBUG: Wrapper login failed")
             return None
-        # Buat public link untuk folder path
-        link = drive.create_public_link(path, expire_days=EXPIRE_DAYS if EXPIRE_DAYS > 0 else None)
+        # List teamfolders and find "PemdesData"
+        teamfolders = drive.list_teamfolders()
+        teamfolder_id = None
+        for tf in teamfolders:
+            if tf.get("name") == "PemdesData":
+                teamfolder_id = tf.get("id")
+                break
+        if not teamfolder_id:
+            print("DEBUG: Teamfolder 'PemdesData' not found")
+            drive.logout()
+            return None
+        # Get relative path inside teamfolder
+        relative_path = path
+        if relative_path.startswith(BASE_FOLDER):
+            relative_path = relative_path[len(BASE_FOLDER):]
+            if relative_path.startswith("/"):
+                relative_path = relative_path[1:]
+        # Buat public link untuk folder path relatif di dalam teamfolder
+        link = drive.create_public_link(teamfolder_id, path=relative_path, expire_days=EXPIRE_DAYS if EXPIRE_DAYS > 0 else None)
         drive.logout()
         return link
     except Exception as e:
