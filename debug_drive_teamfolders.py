@@ -24,7 +24,7 @@ def login():
         "method": "login",
         "account": ADMIN_USER,
         "passwd": ADMIN_PASS,
-        "session": "Drive",
+        "session": "FileStation",
         "format": "sid"
     }
     r = session.get(url, params=params, verify=VERIFY_SSL, timeout=20)
