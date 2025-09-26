@@ -6,6 +6,7 @@
 import os, sys, time, urllib3
 import requests
 import pandas as pd
+from synology_drive_api.drive import SynologyDrive
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -79,11 +80,38 @@ def get_drive_share_for_path(path, sid):
         pass
     return None
 
+def create_link_with_wrapper(path):
+    try:
+        drive = SynologyDrive(
+            host=NAS_HOST,
+            port=NAS_PORT,
+            username=ADMIN_USER,
+            password=ADMIN_PASS,
+            secure=USE_HTTPS,
+            verify_ssl=VERIFY_SSL,
+        )
+        # Pastikan login berhasil
+        if not drive.login():
+            print("DEBUG: Wrapper login failed")
+            return None
+        # Buat public link untuk folder path
+        link = drive.create_public_link(path, expire_days=EXPIRE_DAYS if EXPIRE_DAYS > 0 else None)
+        drive.logout()
+        return link
+    except Exception as e:
+        print(f"DEBUG: Wrapper create link failed for path {path}: {e}")
+        return None
+
 def create_drive_share_for_path(path, sid, expire_days=0):
     """
     Buat share link langsung berdasarkan path (pakai FileStation untuk validasi).
     """
     import json
+
+    # coba dulu dengan wrapper SynologyDrive
+    link = create_link_with_wrapper(path)
+    if link:
+        return link
 
     # pastikan path valid di FileStation
     try:
