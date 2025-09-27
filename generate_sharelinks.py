@@ -17,7 +17,7 @@ ADMIN_USER = "desaAPI"                   # user yang punya hak Drive
 ADMIN_PASS = "pemdesnasAPI123"                # simpan aman
 EXCEL_PATH = "/volume1/scripts/daftar_desa.xlsx"
 BASE_FOLDER = "/PemdesData/Data Desa"  # Logical path for FileStation, not physical /volume1
-TEAMFOLDER_ID = "909053927637426177"
+TEAMFOLDER_ID = "909053932741894147"
 OUT_CSV = "/volume1/scripts/desa_sharelinks.csv"
 EXPIRE_DAYS = 0   # 0 = never expire; atau ganti ke angka (mis. 30)
 USE_HTTPS = True
