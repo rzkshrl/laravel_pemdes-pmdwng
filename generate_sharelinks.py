@@ -17,6 +17,7 @@ ADMIN_USER = "desaAPI"                   # user yang punya hak Drive
 ADMIN_PASS = "pemdesnasAPI123"                # simpan aman
 EXCEL_PATH = "/volume1/scripts/daftar_desa.xlsx"
 BASE_FOLDER = "/PemdesData/Data Desa"  # Logical path for FileStation, not physical /volume1
+TEAMFOLDER_ID = "909053927637426177"
 OUT_CSV = "/volume1/scripts/desa_sharelinks.csv"
 EXPIRE_DAYS = 0   # 0 = never expire; atau ganti ke angka (mis. 30)
 USE_HTTPS = True
@@ -123,11 +124,29 @@ def create_drive_share_for_path(path, sid, expire_days=0):
     """
     import json
 
-    # coba dulu dengan wrapper SynologyDrive
-    link = create_link_with_wrapper(path)
-    if link:
-        return link
+    if TEAMFOLDER_ID:
+        relative_path = path
+        if relative_path.startswith(BASE_FOLDER):
+            relative_path = relative_path[len(BASE_FOLDER):]
+            if relative_path.startswith("/"):
+                relative_path = relative_path[1:]
+        items_param = json.dumps([{"type": "folder", "id": TEAMFOLDER_ID, "path": relative_path}])
+        params_share = {"items": items_param}
+        if expire_days > 0:
+            params_share["expire_in_days"] = str(expire_days)
+        try:
+            for ver in [1, 2]:
+                j = drive_api_call("SYNO.Drive.Share", "create", version=ver, params=params_share, sid=sid)
+                print(f"DEBUG create (version={ver}):", j)
+                if j.get("success") and "data" in j:
+                    links = j["data"].get("links", []) or []
+                    if isinstance(links, list) and len(links) > 0 and isinstance(links[0], dict) and "url" in links[0]:
+                        return links[0]["url"]
+        except Exception as e:
+            print(f"  Error create_drive_share_for_path with TEAMFOLDER_ID:", e)
+        return None
 
+    # fallback lama jika TEAMFOLDER_ID tidak ada
     # pastikan path valid di FileStation
     try:
         res = drive_api_call("SYNO.FileStation.List", "list", version=2,
