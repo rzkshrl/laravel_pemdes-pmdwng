@@ -17,22 +17,23 @@ print("Kolom terbaca:", df.columns.tolist())
 KOLOM_KEC = "Kecamatan"
 KOLOM_DESA = "Desa"
 KOLOM_NAMA_FILE = "Nama File"
-KOLOM_TIMESTAMP = "Timestamp"
+KOLOM_TAHUN = "Tahun"
+KOLOM_BULAN = "Bulan"
 
 for _, row in df.iterrows():
     kecamatan = str(row[KOLOM_KEC]).strip()
     desa = str(row[KOLOM_DESA]).strip().replace("-", "_")
     fname = str(row[KOLOM_NAMA_FILE]).strip()
-    timestamp = str(row[KOLOM_TIMESTAMP]).strip()
+    tahun = str(row[KOLOM_TAHUN]).strip()
+    bulan = str(row[KOLOM_BULAN]).strip()
 
     print(f"[INFO] Desa={desa}, File={fname}")
 
     # Buat folder jika belum ada
-    tahun = pd.to_datetime(timestamp).year
 
     kec_folder = os.path.join(DEST_BASE, kecamatan)
     desa_folder = os.path.join(kec_folder, desa)
-    spj_folder = os.path.join(desa_folder, f"SPJ {tahun}")
+    spj_folder = os.path.join(desa_folder, f"SPJ {tahun}", bulan)
 
     # pastikan folder ada
     os.makedirs(spj_folder, exist_ok=True)
