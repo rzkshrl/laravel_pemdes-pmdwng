@@ -50,7 +50,7 @@ for _, row in df.iterrows():
             # Cek ulang file dest_file
             if os.path.exists(dest_file):
                 local_size = os.path.getsize(dest_file)
-                gdrive_path = f"gdrive:FormUploads/{fname}"
+                gdrive_path = f"gdrive:/Form Upload Dokumen Desa (File responses)/Upload Dokumen (File responses){fname}"
                 # Ambil ukuran file dari Google Drive menggunakan rclone ls
                 result = os.popen(f"rclone ls '{gdrive_path}'").read()
                 if result.strip():
