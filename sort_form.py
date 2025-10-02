@@ -40,8 +40,9 @@ for _, row in df.iterrows():
     os.makedirs(spj_folder, exist_ok=True)
 
     src_file = os.path.join(SRC_DIR, fname)
-    dest_file = os.path.join(spj_folder, fname)    
+    dest_file = os.path.join(spj_folder, fname)   
 
+    print(f"DEBUG: src_file={src_file}, dest_file={dest_file}")
 
     if os.path.exists(src_file):
         if not os.path.exists(dest_file):
@@ -49,15 +50,21 @@ for _, row in df.iterrows():
             shutil.move(src_file, dest_file)
             # Cek ulang file dest_file
             if os.path.exists(dest_file):
+                print(f"[INFO] File berhasil dipindah: {dest_file}")
+                # Cek ukuran file lokal dan di Google Drive
                 local_size = os.path.getsize(dest_file)
                 gdrive_path = f"gdrive:/Form Upload Dokumen Desa (File responses)/Upload Dokumen (File responses){fname}"
+                print(f"[DEBUG] Mengecek ukuran file di Google Drive: {gdrive_path}")
                 # Ambil ukuran file dari Google Drive menggunakan rclone ls
                 result = os.popen(f"rclone ls '{gdrive_path}'").read()
+                print(f"[DEBUG] Hasil rclone ls: {result}")
                 if result.strip():
                     # Output format: "<size> <filename>"
+                    print(f"[DEBUG] Parsing ukuran file dari hasil rclone ls")
                     try:
                         remote_size_str = result.strip().split()[0]
                         remote_size = int(remote_size_str)
+                        print(f"[DEBUG] Ukuran file lokal: {local_size}, Ukuran file Google Drive: {remote_size}")
                         if local_size == remote_size:
                             print(f"[INFO] Menghapus file dari Google Drive: {gdrive_path}")
                             subprocess.run(["rclone", "delete", gdrive_path])
