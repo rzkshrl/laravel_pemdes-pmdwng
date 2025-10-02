@@ -1,6 +1,7 @@
 import os
 import shutil
 import pandas as pd
+import subprocess
 
 # Path NAS
 FORM_RESPONSES_XLSX = "/volume1/homes/adminpemdes/FormResponseGDriveSync/Respon Form Desa.xlsx"
@@ -46,5 +47,27 @@ for _, row in df.iterrows():
         if not os.path.exists(dest_file):
             print(f"Memindahkan {fname} -> {kec_folder}/{desa_folder}/{spj_folder}")
             shutil.move(src_file, dest_file)
+            # Cek ulang file dest_file
+            if os.path.exists(dest_file):
+                local_size = os.path.getsize(dest_file)
+                gdrive_path = f"gdrive:FormUploads/{fname}"
+                # Ambil ukuran file dari Google Drive menggunakan rclone ls
+                result = os.popen(f"rclone ls '{gdrive_path}'").read()
+                if result.strip():
+                    # Output format: "<size> <filename>"
+                    try:
+                        remote_size_str = result.strip().split()[0]
+                        remote_size = int(remote_size_str)
+                        if local_size == remote_size:
+                            print(f"[INFO] Menghapus file dari Google Drive: {gdrive_path}")
+                            subprocess.run(["rclone", "delete", gdrive_path])
+                        else:
+                            print(f"[WARNING] Ukuran file lokal ({local_size}) dan Google Drive ({remote_size}) berbeda. File tidak dihapus dari Google Drive.")
+                    except Exception as e:
+                        print(f"[ERROR] Gagal memproses ukuran file Google Drive: {e}")
+                else:
+                    print(f"[WARNING] Gagal mengambil ukuran file dari Google Drive: {gdrive_path}")
+            else:
+                print(f"[WARNING] File {dest_file} tidak ditemukan setelah pemindahan.")
     else:
         print(f"[WARNING] File {fname} tidak ditemukan di {SRC_DIR}")
