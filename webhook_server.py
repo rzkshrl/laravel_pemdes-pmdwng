@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from flask import Flask, request, jsonify
 import os
 import logging
@@ -50,4 +51,4 @@ def webhook():
     return jsonify({"status": "ok", "processed": len(file_ids)})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=8080)
