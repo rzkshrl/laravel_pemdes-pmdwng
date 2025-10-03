@@ -14,18 +14,40 @@ logging.basicConfig(
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.json
-    logging.info(f"Webhook diterima: {data}")
+    print(f"Webhook diterima: {data}")
 
-    # Jalankan rclone sync
-    ret1 = os.system("/volume1/scripts/rclone_sync.sh")
-    logging.info(f"rclone_sync.sh selesai dengan kode {ret1}")
+    kec = data.get("kecamatan")
+    desa = data.get("desa")
+    tahun = data.get("tahun")
+    bulan = data.get("bulan")
+    file_ids = data.get("fileIds", "").split(",")
 
-    # Jalankan sortir
-    ret2 = os.system("python3 /volume1/scripts/sort_form.py")
-    logging.info(f"sort_form.py selesai dengan kode {ret2}")
+    dest_folder = f"/volume1/PemdesData/Data Desa/{kec}/{desa}/SPJ {tahun}/{bulan}"
+    os.makedirs(dest_folder, exist_ok=True)
 
-    return jsonify({"status": "ok", "message": "Sync + Sort triggered"})
+    for fid in file_ids:
+        fid = fid.strip()
+        if not fid:
+            continue
+        gdrive_path = f"gdrive:{fid}"
+
+        # Copy ke NAS
+        cmd_copy = f"rclone copy '{gdrive_path}' '{dest_folder}' --ignore-existing"
+        os.system(cmd_copy)
+
+        # Verifikasi file terunduh di NAS sebelum delete
+        files_local = os.listdir(dest_folder)
+        if any(fid in f for f in files_local):
+            cmd_delete = f"rclone delete '{gdrive_path}'"
+            os.system(cmd_delete)
+            print(f"[INFO] File {fid} dipindahkan & dihapus dari Google Drive")
+        else:
+            print(f"[WARNING] File {fid} belum ditemukan di NAS, skip delete")
+
+    # Jalankan sortir setelah file berhasil dipindah
+    os.system("python3 /volume1/scripts/sort_form.py")
+
+    return jsonify({"status": "ok", "processed": len(file_ids)})
 
 if __name__ == "__main__":
-    # production: pakai 0.0.0.0 agar bisa diakses dari luar
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(host="0.0.0.0", port=5000)
