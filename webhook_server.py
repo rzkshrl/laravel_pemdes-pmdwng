@@ -40,12 +40,12 @@ def webhook():
         if not fid:
             continue
 
-    if fname and os.path.splitext(fname)[1]:
-        # Gunakan path lengkap dengan nama file
-        gdrive_path = f"gdrive:/Form Upload Dokumen Desa (File responses)/Upload Dokumen (File responses)/{fname}"
-    else:
-        # Jika nama file tidak tersedia, fallback ke file ID mode
-        gdrive_path = f"gdrive:{{{fid}}}"
+        if fname and os.path.splitext(fname)[1]:
+            # Gunakan path lengkap dengan nama file
+            gdrive_path = f"gdrive:/Form Upload Dokumen Desa (File responses)/Upload Dokumen (File responses)/{fname}"
+        else:
+            # Jika nama file tidak tersedia, fallback ke file ID mode
+            gdrive_path = f"gdrive:{{{fid}}}"
 
         # --- Copy ke NAS ---
         cmd_copy = f"rclone copy '{gdrive_path}' '{dest_folder}' --ignore-existing"
