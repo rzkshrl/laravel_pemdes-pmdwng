@@ -1,94 +1,97 @@
 #!/usr/bin/env python3
 from flask import Flask, request, jsonify
 import os
-import threading
 import logging
-import datetime
+import time
+import requests
 
 app = Flask(__name__)
 
-# === Konfigurasi dasar ===
-RCLONE_PATH = "/bin/rclone"
-DEST_BASE = "/volume1/PemdesData/Data Desa"
-LOG_DIR = "/volume1/scripts/logs"
-os.makedirs(LOG_DIR, exist_ok=True)
+# === KONFIGURASI ===
+WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx_JabPPsfeDoYUF643Ap2RF9CRswr12GLI7a3dAwYgbF3Mcr-t_uXRAlHEuEB1JtwbJw/exec"
+LOG_PATH = "/volume1/scripts/webhook_server.log"
 
-# === Setup logging utama ===
+# === Logging setup ===
 logging.basicConfig(
-    filename="/volume1/scripts/webhook_server.log",
+    filename=LOG_PATH,
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 
-
-# === Fungsi utama pemindahan file ===
-def process_webhook(data):
+def kirim_status(data, status):
+    """Kirim status ke Google Apps Script WebApp"""
+    payload = {
+        "tahun": data.get("tahun"),
+        "kecamatan": data.get("kecamatan"),
+        "desa": data.get("desa"),
+        "bulan": data.get("bulan"),
+        "file": data.get("files"),
+        "status": status
+    }
     try:
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        job_log = os.path.join(LOG_DIR, f"job_{timestamp}.log")
-
-        # --- Ambil data dari JSON ---
-        kec = (data.get("kecamatan") or "").strip()
-        desa = (data.get("desa") or "").strip().replace("-", "_")
-        tahun = (data.get("tahun") or "").strip()
-        bulan = (data.get("bulan") or "").strip()
-        fname = (data.get("files") or "").strip()
-        file_ids = (data.get("fileIds") or "").split(",")
-
-        if not all([kec, desa, tahun, bulan]) or not file_ids:
-            logging.warning(f"[SKIP] Data tidak lengkap: {data}")
-            return
-
-        dest_folder = f"{DEST_BASE}/{kec}/{desa}/SPJ {tahun}/{bulan}"
-        os.makedirs(dest_folder, exist_ok=True)
-        logging.info(f"[TASK] Mulai proses untuk {fname} → {dest_folder}")
-
-        # === Jalankan rclone move ===
-        gdrive_path = (
-            f'gdrive:/Form Upload Dokumen Desa (File responses)/Upload Dokumen (File responses)/{fname}'
-        )
-        cmd = (
-            f'{RCLONE_PATH} move "{gdrive_path}" "{dest_folder}" '
-            f'--drive-use-trash=false --ignore-existing '
-            f'--checkers=16 --transfers=8 --tpslimit=8 '
-            f'--stats=1s --stats-log-level NOTICE -v >> "{job_log}" 2>&1'
-        )
-
-        start_time = datetime.datetime.now()
-        exit_code = os.system(cmd)
-        duration = (datetime.datetime.now() - start_time).total_seconds()
-
-        if exit_code == 0:
-            logging.info(f"[SUCCESS] File {fname} berhasil dipindahkan dalam {duration:.2f} detik.")
-        else:
-            logging.error(f"[FAILED] rclone exit={exit_code} untuk {fname} (durasi {duration:.2f}s).")
-
-        # === Validasi setelah selesai ===
-        dest_file = os.path.join(dest_folder, fname)
-        if os.path.exists(dest_file):
-            logging.info(f"[VERIFY] File ditemukan di NAS: {dest_file}")
-        else:
-            logging.warning(f"[VERIFY] File belum muncul di NAS: {dest_file}")
-
-        # === Jalankan sortir otomatis ===
-        os.system("python3 /volume1/scripts/sort_form.py >> /volume1/scripts/sort_form.log 2>&1")
-
+        r = requests.post(WEBAPP_URL, json=payload, timeout=10)
+        logging.info(f"[CALLBACK] Status '{status}' terkirim ke Google Sheet ({r.status_code})")
     except Exception as e:
-        logging.error(f"[ERROR] Exception di process_webhook: {e}")
+        logging.warning(f"[CALLBACK] Gagal kirim status '{status}': {e}")
 
-
-# === Endpoint webhook ===
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.json or {}
     logging.info(f"Webhook diterima: {data}")
 
-    # Jalankan proses di thread background agar cepat balas ke GAS
-    threading.Thread(target=process_webhook, args=(data,)).start()
+    kec = (data.get("kecamatan") or "").strip()
+    desa = (data.get("desa") or "").strip().replace("-", "_")
+    tahun = (data.get("tahun") or "").strip()
+    bulan = (data.get("bulan") or "").strip()
+    fname = (data.get("files") or "").strip()
 
-    # Balas cepat agar GAS tidak timeout
-    return jsonify({"status": "accepted", "message": "Processing in background"}), 202
+    if not all([kec, desa, tahun, bulan, fname]):
+        logging.warning(f"Data tidak lengkap, webhook dilewati: {data}")
+        return jsonify({"status": "skip", "reason": "data incomplete"}), 400
 
+    dest_folder = f"/volume1/PemdesData/Data Desa/{kec}/{desa}/SPJ {tahun}/{bulan}"
+    os.makedirs(dest_folder, exist_ok=True)
+    logging.info(f"Membuat folder tujuan: {dest_folder}")
+
+    # === 1. Kirim status awal: sedang diproses ===
+    kirim_status(data, "Sedang diproses ⏳")
+
+    start_time = time.time()
+
+    # === 2. Jalankan rclone copy ===
+    gdrive_path = f"gdrive:/Form Upload Dokumen Desa (File responses)/Upload Dokumen (File responses)/{fname}"
+    cmd_copy = f'"{RCLONE_PATH}" copy "{gdrive_path}" "{dest_folder}" --ignore-existing -v'
+    logging.info(f"Menjalankan: {cmd_copy}")
+    exit_code = os.system(cmd_copy)
+    logging.info(f"Hasil copy (exit code): {exit_code}")
+
+    # === 3. Verifikasi hasil ===
+    success = False
+    if exit_code == 0:
+        files_local = os.listdir(dest_folder)
+        if any(fname in f for f in files_local):
+            success = True
+
+    if success:
+        # === 4. Hapus file di Google Drive ===
+        cmd_delete = f'"{RCLONE_PATH}" delete "{gdrive_path}"'
+        os.system(cmd_delete)
+        logging.info(f"File {fname} berhasil dipindahkan & dihapus dari Google Drive")
+
+        # === 5. Kirim status selesai ===
+        kirim_status(data, "Selesai ✅")
+    else:
+        # === 6. Jika gagal, kirim status gagal ===
+        logging.warning(f"File {fname} gagal disalin atau tidak ditemukan di NAS")
+        kirim_status(data, "Gagal ❌")
+
+    # === 7. Jalankan validasi lokal ===
+    os.system("python3 /volume1/scripts/sort_form.py")
+
+    durasi = time.time() - start_time
+    logging.info(f"[PERFORMANCE] Total waktu proses: {durasi:.2f} detik")
+
+    return jsonify({"status": "ok", "processed": 1})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5050)
