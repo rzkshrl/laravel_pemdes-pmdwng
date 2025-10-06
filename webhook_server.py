@@ -17,46 +17,63 @@ def webhook():
     data = request.json or {}
     logging.info(f"Webhook diterima: {data}")
 
-    # --- Ambil data ---
+    # --- Ambil data dari JSON ---
     kec = (data.get("kecamatan") or "").strip()
     desa = (data.get("desa") or "").strip().replace("-", "_")
     tahun = (data.get("tahun") or "").strip()
     bulan = (data.get("bulan") or "").strip()
     fname = (data.get("files") or "").strip()
+    file_ids = (data.get("fileIds") or "").split(",")
 
-    # Validasi
-    if not all([kec, desa, tahun, bulan, fname]):
-        logging.warning("Data tidak lengkap, webhook dilewati.")
-        return jsonify({"status": "skip", "reason": "incomplete data"}), 400
+    # --- Validasi data wajib ---
+    if not all([kec, desa, tahun, bulan]) or not file_ids:
+        logging.warning(f"Data tidak lengkap, webhook dilewati: {data}")
+        return jsonify({"status": "skip", "reason": "data incomplete"}), 400
 
-    # Buat folder tujuan
     dest_folder = f"/volume1/PemdesData/Data Desa/{kec}/{desa}/SPJ {tahun}/{bulan}"
     os.makedirs(dest_folder, exist_ok=True)
+
     logging.info(f"Membuat folder tujuan: {dest_folder}")
 
-    # Path sumber di Google Drive
-    gdrive_folder = "gdrive:/Form Upload Dokumen Desa (File responses)/Upload Dokumen (File responses)"
-    gdrive_path = f'{gdrive_folder}/{fname}'
+    for fid in file_ids:
+        fid = fid.strip()
+        if not fid:
+            continue
 
-    # --- Jalankan rclone copy ---
-    cmd_copy = f'rclone copy "{gdrive_path}" "{dest_folder}" --ignore-existing -v'
-    logging.info(f"Menjalankan: {cmd_copy}")
-    result_code = os.system(cmd_copy)
-    logging.info(f"Hasil copy (exit code): {result_code}")
+        # --- 1️⃣ Coba copy pakai nama file ---
+        if fname and os.path.splitext(fname)[1]:
+            gdrive_path = f'gdrive:/Form Upload Dokumen Desa (File responses)/Upload Dokumen (File responses)/{fname}'
+            cmd_copy = f'rclone copy "{gdrive_path}" "{dest_folder}" --ignore-existing -v'
+            logging.info(f'Mencoba copy (nama file): {cmd_copy}')
+            result = os.system(cmd_copy)
+        else:
+            result = 999  # trigger fallback langsung
 
-    # --- Cek apakah file berhasil tersalin ---
-    dest_file = os.path.join(dest_folder, fname)
-    if os.path.exists(dest_file):
-        logging.info(f"File {fname} berhasil disalin, lanjut hapus dari Google Drive...")
-        cmd_delete = f'rclone delete "{gdrive_path}"'
-        os.system(cmd_delete)
-    else:
-        logging.warning(f"File {fname} belum ditemukan di NAS, skip delete")
+        # --- 2️⃣ Jika gagal, fallback pakai File ID ---
+        if result != 0:
+            gdrive_path = f'gdrive:{{{fid}}}'
+            cmd_copy = f'rclone copy "{gdrive_path}" "{dest_folder}" --ignore-existing -v'
+            logging.info(f'Fallback copy (file ID): {cmd_copy}')
+            result = os.system(cmd_copy)
 
-    # --- Jalankan validasi sort_form.py ---
+        logging.info(f"Hasil copy (exit code): {result}")
+
+        # --- 3️⃣ Verifikasi hasil ---
+        files_local = os.listdir(dest_folder)
+        copied = any(fname in f for f in files_local) or any(fid in f for f in files_local)
+
+        if copied:
+            # Hapus dari GDrive setelah sukses
+            cmd_delete = f'rclone delete "{gdrive_path}"'
+            os.system(cmd_delete)
+            logging.info(f"File {fname or fid} berhasil dipindahkan dan dihapus dari GDrive")
+        else:
+            logging.warning(f"File {fname or fid} belum ditemukan di NAS, skip delete")
+
+    # --- 4️⃣ Jalankan validasi setelah pemindahan ---
     os.system("python3 /volume1/scripts/sort_form.py")
 
-    return jsonify({"status": "ok", "file": fname})
+    return jsonify({"status": "ok", "processed": len(file_ids)})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5050)
