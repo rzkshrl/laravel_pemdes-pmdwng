@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 from flask import Flask, request, jsonify
 import os
-import time
 import logging
 
 app = Flask(__name__)
 
-# === Setup logging ===
+# === Logging setup ===
+LOG_PATH = "/volume1/scripts/webhook_server.log"
+RCLONE_LOG = "/volume1/scripts/rclone_webhook_debug.log"
+RCLONE_CONFIG = "/root/.config/rclone/rclone.conf"
+
 logging.basicConfig(
-    filename="/volume1/scripts/webhook_server.log",
+    filename=LOG_PATH,
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
@@ -18,50 +21,43 @@ def webhook():
     data = request.json or {}
     logging.info(f"Webhook diterima: {data}")
 
-    # --- Ambil data dari JSON ---
     kec = (data.get("kecamatan") or "").strip()
     desa = (data.get("desa") or "").strip().replace("-", "_")
     tahun = (data.get("tahun") or "").strip()
     bulan = (data.get("bulan") or "").strip()
     fname = (data.get("files") or "").strip()
+    file_ids = (data.get("fileIds") or "").split(",")
 
-    # --- Validasi data wajib ---
     if not all([kec, desa, tahun, bulan, fname]):
-        logging.warning(f"Data tidak lengkap, webhook dilewati: {data}")
-        return jsonify({"status": "skip", "reason": "data incomplete"}), 400
+        logging.warning(f"Data tidak lengkap, dilewati: {data}")
+        return jsonify({"status": "skip", "reason": "incomplete data"}), 400
 
-    # --- Buat folder tujuan di NAS ---
     dest_folder = f"/volume1/PemdesData/Data Desa/{kec}/{desa}/SPJ {tahun}/{bulan}"
     os.makedirs(dest_folder, exist_ok=True)
     logging.info(f"Membuat folder tujuan: {dest_folder}")
 
-    # --- Gunakan path fix di Google Drive ---
-    gdrive_path = f'gdrive:/Form Upload Dokumen Desa (File responses)/Upload Dokumen (File responses)/{fname}'
+    # --- Lokasi file di Google Drive ---
+    gdrive_path = f"gdrive:/Form Upload Dokumen Desa (File responses)/Upload Dokumen (File responses)/{fname}"
 
-    # --- Copy ke NAS ---
-    cmd_copy = f'rclone copy "{gdrive_path}" "{dest_folder}" --ignore-existing -v'
+    # --- Copy file ---
+    cmd_copy = (
+        f'rclone --config "{RCLONE_CONFIG}" copy "{gdrive_path}" "{dest_folder}" '
+        f'--ignore-existing -vv --log-file="{RCLONE_LOG}"'
+    )
     logging.info(f"Menjalankan copy: {cmd_copy}")
-    exit_code = os.system(cmd_copy)
-    logging.info(f"Hasil copy (exit code): {exit_code}")
+    os.system(cmd_copy)
 
-    # --- Tunggu sebentar agar rclone benar-benar selesai ---
-    time.sleep(3)
-
-    # --- Verifikasi hasil copy ---
-    dest_file = os.path.join(dest_folder, fname)
-    if os.path.exists(dest_file):
-        file_size = os.path.getsize(dest_file)
-        logging.info(f"File ditemukan di NAS ({file_size} bytes), siap dihapus dari Drive")
-
-        # --- Hapus file di Drive ---
-        cmd_delete = f'rclone delete "{gdrive_path}" -v'
-        logging.info(f"Menjalankan delete: {cmd_delete}")
+    # --- Verifikasi file sudah muncul ---
+    files_local = os.listdir(dest_folder)
+    if any(fname in f for f in files_local):
+        logging.info(f"File {fname} berhasil di-copy ke NAS, lanjut delete di GDrive")
+        cmd_delete = f'rclone --config "{RCLONE_CONFIG}" delete "{gdrive_path}" -vv --log-file="{RCLONE_LOG}"'
         os.system(cmd_delete)
-        logging.info(f"File {fname} berhasil dipindahkan & dihapus dari GDrive")
     else:
-        logging.warning(f"File {fname} belum ditemukan di NAS, skip delete")
+        logging.warning(f"File {fname} belum muncul di NAS, skip delete")
 
-    # --- Jalankan validator (sort_form) ---
+    # --- Jalankan validasi sort_form.py ---
+    logging.info(f"Menjalankan sort_form.py untuk validasi folder...")
     os.system("python3 /volume1/scripts/sort_form.py")
 
     return jsonify({"status": "ok", "file": fname})
