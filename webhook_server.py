@@ -10,6 +10,7 @@ app = Flask(__name__)
 # === KONFIGURASI ===
 WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx_JabPPsfeDoYUF643Ap2RF9CRswr12GLI7a3dAwYgbF3Mcr-t_uXRAlHEuEB1JtwbJw/exec"
 LOG_PATH = "/volume1/scripts/webhook_server.log"
+RCLONE_PATH = "/bin/rclone"
 
 # === Logging setup ===
 logging.basicConfig(
