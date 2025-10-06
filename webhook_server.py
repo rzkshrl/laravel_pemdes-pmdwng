@@ -22,6 +22,7 @@ def webhook():
     desa = (data.get("desa") or "").strip().replace("-", "_")
     tahun = (data.get("tahun") or "").strip()
     bulan = (data.get("bulan") or "").strip()
+    fname = (data.get("files") or "").strip()
     file_ids = (data.get("fileIds") or "").split(",")
 
     # --- Validasi data wajib ---
@@ -39,7 +40,12 @@ def webhook():
         if not fid:
             continue
 
-        gdrive_path = f"gdrive:/Form Upload Dokumen Desa (File responses)/Upload Dokumen (File responses)/{fid}"
+    if fname and os.path.splitext(fname)[1]:
+        # Gunakan path lengkap dengan nama file
+        gdrive_path = f"gdrive:/Form Upload Dokumen Desa (File responses)/Upload Dokumen (File responses)/{fname}"
+    else:
+        # Jika nama file tidak tersedia, fallback ke file ID mode
+        gdrive_path = f"gdrive:{{{fid}}}"
 
         # --- Copy ke NAS ---
         cmd_copy = f"rclone copy '{gdrive_path}' '{dest_folder}' --ignore-existing"
