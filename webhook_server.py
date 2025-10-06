@@ -39,7 +39,7 @@ def webhook():
         if not fid:
             continue
 
-        gdrive_path = f"gdrive:{fid}"
+        gdrive_path = f"gdrive:/Form Upload Dokumen Desa (File responses)/Upload Dokumen (File responses)/{fid}"
 
         # --- Copy ke NAS ---
         cmd_copy = f"rclone copy '{gdrive_path}' '{dest_folder}' --ignore-existing"
