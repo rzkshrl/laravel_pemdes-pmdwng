@@ -27,6 +27,7 @@ def kirim_status(data, status):
         "kecamatan": data.get("kecamatan"),
         "desa": data.get("desa"),
         "bulan": data.get("bulan"),
+        "jenisDokumen": data.get("jenisDokumen"),
         "file": data.get("files"),
         "status": status
     }
@@ -45,13 +46,14 @@ def webhook():
     desa = (data.get("desa") or "").strip().replace("-", "_")
     tahun = (data.get("tahun") or "").strip()
     bulan = (data.get("bulan") or "").strip()
+    jenis = (data.get("jenisDokumen") or "").strip()
     fname = (data.get("files") or "").strip()
 
-    if not all([kec, desa, tahun, bulan, fname]):
+    if not all([kec, desa, tahun, bulan, jenis, fname]):
         logging.warning(f"Data tidak lengkap, webhook dilewati: {data}")
         return jsonify({"status": "skip", "reason": "data incomplete"}), 400
 
-    dest_folder = f"/volume1/PemdesData/Data Desa/{kec}/{desa}/SPJ {tahun}/{bulan}"
+    dest_folder = f"/volume1/PemdesData/Data Desa/{kec}/{desa}/{jenis} {tahun}/{bulan}"
     os.makedirs(dest_folder, exist_ok=True)
     logging.info(f"Membuat folder tujuan: {dest_folder}")
 
