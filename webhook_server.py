@@ -53,7 +53,12 @@ def webhook():
         logging.warning(f"Data tidak lengkap, webhook dilewati: {data}")
         return jsonify({"status": "skip", "reason": "data incomplete"}), 400
 
-    dest_folder = f"/volume1/PemdesData/Data Desa/{kec}/{desa}/{jenis} {tahun}/{bulan}"
+    # Jika jenis dokumen adalah SPJ, pakai folder per bulan
+    if jenis.lower() == "spj":
+        dest_folder = f"/volume1/PemdesData/Data Desa/{kec}/{desa}/SPJ {tahun}/{bulan}"
+    else:
+        # Dokumen lain tanpa folder bulan
+        dest_folder = f"/volume1/PemdesData/Data Desa/{kec}/{desa}/{jenis} {tahun}"
     os.makedirs(dest_folder, exist_ok=True)
     logging.info(f"Membuat folder tujuan: {dest_folder}")
 
