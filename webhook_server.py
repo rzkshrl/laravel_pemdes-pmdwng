@@ -51,7 +51,7 @@ def webhook():
 
     if not all([kec, desa, tahun, bulan, jenis, fname]):
         logging.warning(f"Data tidak lengkap, webhook dilewati: {data}")
-        return jsonify({"status": "skip", "reason": "data incomplete"}), 400
+        return jsonify({"status": "skip", "reason": "data incomplete"}), 500
 
     # Jika jenis dokumen adalah SPJ, pakai folder per bulan
     if jenis.lower() == "spj":
