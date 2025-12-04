@@ -97,8 +97,8 @@ def webhook():
         logging.warning(f"File {fname} gagal disalin atau tidak ditemukan di NAS")
         kirim_status(data, "Gagal ❌")
 
-    # === 7. Jalankan validasi lokal ===
-    os.system("python3 /volume1/scripts/sort_form.py")
+    # # === 7. Jalankan validasi lokal ===
+    # os.system("python3 /volume1/scripts/sort_form.py")
 
     durasi = time.time() - start_time
     logging.info(f"[PERFORMANCE] Total waktu proses: {durasi:.2f} detik")
