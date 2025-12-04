@@ -28,12 +28,13 @@ def kirim_status(data, status):
         "desa": data.get("desa"),
         "bulan": data.get("bulan"),
         "jenisDokumen": data.get("jenisDokumen"),
-        "file": data.get("file"),
+        "file": data.get("file") or (data.get("files") or "").split(",")[0],
         "status": status
     }
     try:
-        r = requests.post(WEBAPP_URL, json=payload, timeout=10)
+        r = requests.post(WEBAPP_URL, json=payload, timeout=20)
         logging.info(f"[CALLBACK] Status '{status}' terkirim ke Google Sheet ({r.status_code})")
+        logging.info("[CALLBACK] Response body: " + (r.text or ""))
     except Exception as e:
         logging.warning(f"[CALLBACK] Gagal kirim status '{status}': {e}")
 
@@ -48,6 +49,8 @@ def webhook():
     bulan = (data.get("bulan") or "").strip()
     jenis = (data.get("jenisDokumen") or "").strip()
     fname = (data.get("file") or "").strip()
+    data['file'] = fname
+    kirim_status(data, "Sedang diproses ⏳")
 
     if not all([kec, desa, tahun, bulan, jenis, fname]):
         logging.warning(f"Data tidak lengkap, webhook dilewati: {data}")
