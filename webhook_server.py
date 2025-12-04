@@ -28,7 +28,7 @@ def kirim_status(data, status):
         "desa": data.get("desa"),
         "bulan": data.get("bulan"),
         "jenisDokumen": data.get("jenisDokumen"),
-        "file": data.get("files"),
+        "file": data.get("file"),
         "status": status
     }
     try:
