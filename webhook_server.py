@@ -58,10 +58,10 @@ def webhook():
 
     # Jika jenis dokumen adalah SPJ, pakai folder per bulan
     if jenis.lower() == "spj":
-        dest_folder = f"/volume1/KEUANGAN DESA_PEMDES/Pengumpulan Data Desa/{kec}/{desa}/SPJ {tahun}/{bulan}"
+        dest_folder = f"/volume1/KEUANGAN DESA_PEMDES/Data Desa/{kec}/{desa}/SPJ {tahun}/{bulan}"
     else:
         # Dokumen lain tanpa folder bulan
-        dest_folder = f"/volume1/KEUANGAN DESA_PEMDES/Pengumpulan Data Desa/{kec}/{desa}/{jenis} {tahun}"
+        dest_folder = f"/volume1/KEUANGAN DESA_PEMDES/Data Desa/{kec}/{desa}/{jenis} {tahun}"
     os.makedirs(dest_folder, exist_ok=True)
     logging.info(f"Membuat folder tujuan: {dest_folder}")
 
