@@ -47,7 +47,7 @@ def webhook():
     tahun = (data.get("tahun") or "").strip()
     bulan = (data.get("bulan") or "").strip()
     jenis = (data.get("jenisDokumen") or "").strip()
-    fname = (data.get("files") or "").strip()
+    fname = (data.get("file") or "").strip()
 
     if not all([kec, desa, tahun, bulan, jenis, fname]):
         logging.warning(f"Data tidak lengkap, webhook dilewati: {data}")
