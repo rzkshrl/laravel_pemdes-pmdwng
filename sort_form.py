@@ -4,7 +4,7 @@ import pandas as pd
 
 # Path metadata & tujuan
 FORM_RESPONSES_XLSX = "/volume1/homes/adminpemdes/FormResponseGDriveSync/Respon Form Desa.xlsx"
-DEST_BASE = "/volume1/PemdesData/Data Desa/"
+DEST_BASE = "/volume1/KEUANGAN DESA_PEMDES/Pengumpulan Data Desa/"
 
 # Baca metadata dari "Data Bersih"
 df = pd.read_excel(FORM_RESPONSES_XLSX, sheet_name="Data Bersih")
