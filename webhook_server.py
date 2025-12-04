@@ -9,7 +9,7 @@ import datetime
 app = Flask(__name__)
 
 # === KONFIGURASI ===
-WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx_JabPPsfeDoYUF643Ap2RF9CRswr12GLI7a3dAwYgbF3Mcr-t_uXRAlHEuEB1JtwbJw/exec"
+WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzYjlMqGvSrvkmdPz03TkRwFSc7A4am3ro5e7aL0YNipHCdNHYHUMBjt_xb0kzgpuMxUQ/exec"
 LOG_PATH = "/volume1/scripts/webhook_server.log"
 RCLONE_PATH = "/bin/rclone"
 
